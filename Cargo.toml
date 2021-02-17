@@ -2,8 +2,10 @@
 name = "twilight-sparkle"
 version = "0.1.0"
 authors = ["Hanif Bin Ariffin <hanif.ariffin.4326@gmail.com>"]
+license = "MIT"
 edition = "2018"
 description = "Read values from stdin using expressions understood by that file type"
+repository = "https://github.com/hbina/tws"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
