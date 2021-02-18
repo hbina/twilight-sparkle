@@ -50,7 +50,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .unwrap()
         .expect("Unsupported file type");
     match file_type {
-        FileType::JSON => {
+        FileType::Json => {
             let content = serde_json::from_str(&input)?;
             let result = JsonSolver::parse_expression(&content, &expression)?;
             let to_print = json_value_to_string(result);
@@ -78,7 +78,7 @@ fn json_value_to_string(v: &serde_json::Value) -> String {
 
 #[derive(Debug)]
 enum FileType {
-    JSON,
+    Json,
 }
 
 impl std::convert::TryFrom<&str> for FileType {
@@ -86,7 +86,7 @@ impl std::convert::TryFrom<&str> for FileType {
 
     fn try_from(str: &str) -> Result<Self, Self::Error> {
         match str.to_ascii_lowercase().as_ref() {
-            "json" => Ok(FileType::JSON),
+            "json" => Ok(FileType::Json),
             _ => Err(String::from(str)),
         }
     }
@@ -122,7 +122,7 @@ impl JsonSolver {
         expression: &str,
     ) -> Result<&'a serde_json::Value, JsonSolverError> {
         let mut reader = value;
-        for expr in expression.split(".") {
+        for expr in expression.split('.') {
             match reader {
                 serde_json::Value::Object(map) => {
                     if let Some(value) = map.get(expr) {
@@ -136,10 +136,9 @@ impl JsonSolver {
                 }
                 serde_json::Value::Array(arr) => {
                     let index = expr.parse::<usize>()?;
-                    reader = arr.get(index).ok_or(JsonSolverError::KeyNotExist(
-                        reader.clone(),
-                        expr.to_string(),
-                    ))?;
+                    reader = arr.get(index).ok_or_else(|| {
+                        JsonSolverError::KeyNotExist(reader.clone(), expr.to_string())
+                    })?;
                 }
                 _ => return Err(JsonSolverError::ValueNotObject(value.clone())),
             }
