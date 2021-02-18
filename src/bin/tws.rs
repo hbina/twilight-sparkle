@@ -1,3 +1,5 @@
+use std::num::ParseIntError;
+
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let matches = clap::App::new(clap::crate_name!())
         .version(clap::crate_version!())
@@ -70,12 +72,7 @@ fn json_value_to_string(v: &serde_json::Value) -> String {
         }
         serde_json::Value::Number(n) => n.to_string(),
         serde_json::Value::String(s) => s.clone(),
-        serde_json::Value::Array(v1) => v1
-            .iter()
-            .map(json_value_to_string)
-            .collect::<Vec<String>>()
-            .join(","),
-        _ => unimplemented!("Deserializing back to JSON is not yet supported"),
+        o => format!("{:?}", o),
     }
 }
 
@@ -102,6 +99,7 @@ pub struct JsonSolver;
 pub enum JsonSolverError {
     KeyNotExist(serde_json::Value, String),
     ValueNotObject(serde_json::Value),
+    Other(Box<dyn std::error::Error>),
 }
 
 impl std::error::Error for JsonSolverError {}
@@ -112,15 +110,39 @@ impl std::fmt::Display for JsonSolverError {
     }
 }
 
+impl std::convert::From<ParseIntError> for JsonSolverError {
+    fn from(err: ParseIntError) -> Self {
+        JsonSolverError::Other(Box::new(err))
+    }
+}
+
 impl JsonSolver {
     fn parse_expression<'a>(
         value: &'a serde_json::Value,
-        expr: &str,
+        expression: &str,
     ) -> Result<&'a serde_json::Value, JsonSolverError> {
         let mut reader = value;
-        let err = || JsonSolverError::KeyNotExist(value.clone(), expr.to_string());
-        for item in expr.split('.') {
-            reader = reader.get(item).ok_or_else(err)?;
+        for expr in expression.split(".") {
+            match reader {
+                serde_json::Value::Object(map) => {
+                    if let Some(value) = map.get(expr) {
+                        reader = value;
+                    } else {
+                        return Err(JsonSolverError::KeyNotExist(
+                            reader.clone(),
+                            expr.to_string(),
+                        ));
+                    }
+                }
+                serde_json::Value::Array(arr) => {
+                    let index = expr.parse::<usize>()?;
+                    reader = arr.get(index).ok_or(JsonSolverError::KeyNotExist(
+                        reader.clone(),
+                        expr.to_string(),
+                    ))?;
+                }
+                _ => return Err(JsonSolverError::ValueNotObject(value.clone())),
+            }
         }
         Ok(reader)
     }
