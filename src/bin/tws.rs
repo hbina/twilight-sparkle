@@ -1,4 +1,4 @@
-use std::num::ParseIntError;
+use parsers;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let matches = clap::App::new(clap::crate_name!())
@@ -20,7 +20,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 .takes_value(true),
         )
         .arg(
-            clap::Arg::with_name("type")
+            clap::Arg::with_name("file_type")
                 .short("t")
                 .long("type")
                 .help("What to interpret the input as")
@@ -44,105 +44,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         input
     };
     let expression = matches.value_of("expression").unwrap();
-    let file_type: FileType = matches
-        .value_of("type")
-        .map(std::convert::TryFrom::try_from)
-        .unwrap()
-        .expect("Unsupported file type");
-    match file_type {
-        FileType::Json => {
-            let content = serde_json::from_str(&input)?;
-            let result = JsonSolver::parse_expression(&content, &expression)?;
-            let to_print = json_value_to_string(result);
-            println!("{}", to_print);
-        }
-    };
+    let file_type = matches.value_of("file_type").unwrap();
+    let solver = parsers::Solver::create_solver(file_type);
+    let result = solver.solve(&input, expression);
+    println!("{}", result);
     Ok(())
-}
-
-fn json_value_to_string(v: &serde_json::Value) -> String {
-    match v {
-        serde_json::Value::Null => "null".to_string(),
-        serde_json::Value::Bool(b) => {
-            if *b {
-                "true".to_string()
-            } else {
-                "false".to_string()
-            }
-        }
-        serde_json::Value::Number(n) => n.to_string(),
-        serde_json::Value::String(s) => s.clone(),
-        o => format!("{:?}", o),
-    }
-}
-
-#[derive(Debug)]
-enum FileType {
-    Json,
-}
-
-impl std::convert::TryFrom<&str> for FileType {
-    type Error = String;
-
-    fn try_from(str: &str) -> Result<Self, Self::Error> {
-        match str.to_ascii_lowercase().as_ref() {
-            "json" => Ok(FileType::Json),
-            _ => Err(String::from(str)),
-        }
-    }
-}
-
-#[derive(Debug)]
-pub struct JsonSolver;
-
-#[derive(Debug)]
-pub enum JsonSolverError {
-    KeyNotExist(serde_json::Value, String),
-    ValueNotObject(serde_json::Value),
-    Other(Box<dyn std::error::Error>),
-}
-
-impl std::error::Error for JsonSolverError {}
-
-impl std::fmt::Display for JsonSolverError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{:#?}", self)
-    }
-}
-
-impl std::convert::From<ParseIntError> for JsonSolverError {
-    fn from(err: ParseIntError) -> Self {
-        JsonSolverError::Other(Box::new(err))
-    }
-}
-
-impl JsonSolver {
-    fn parse_expression<'a>(
-        value: &'a serde_json::Value,
-        expression: &str,
-    ) -> Result<&'a serde_json::Value, JsonSolverError> {
-        let mut reader = value;
-        for expr in expression.split('.') {
-            match reader {
-                serde_json::Value::Object(map) => {
-                    if let Some(value) = map.get(expr) {
-                        reader = value;
-                    } else {
-                        return Err(JsonSolverError::KeyNotExist(
-                            reader.clone(),
-                            expr.to_string(),
-                        ));
-                    }
-                }
-                serde_json::Value::Array(arr) => {
-                    let index = expr.parse::<usize>()?;
-                    reader = arr.get(index).ok_or_else(|| {
-                        JsonSolverError::KeyNotExist(reader.clone(), expr.to_string())
-                    })?;
-                }
-                _ => return Err(JsonSolverError::ValueNotObject(value.clone())),
-            }
-        }
-        Ok(reader)
-    }
 }
