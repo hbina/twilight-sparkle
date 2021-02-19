@@ -19,3 +19,7 @@ name = "tws"
 
 [profile.release]
 lto = true
+
+[lib]
+name = "parsers"
+path = "src/parsers/lib.rs"
