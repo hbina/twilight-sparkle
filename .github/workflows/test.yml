@@ -1,8 +1,8 @@
-name: build and publish
+name: test
 
 on:
   push:
-    tags: ["test-gh-workflow"]
+    branches: ["*"]
 
 jobs:
   build:
