@@ -26,16 +26,16 @@ jobs:
           mkdir builds
       - name: Build Win64
         run: |
-          cargo +nightly rustc --bin tws --release --verbose --target=x86_64-pc-windows-gnu -- -C linker=x86_64-w64-mingw32-gcc
-          mkdir builds/tws-win64
-          cp target/x86_64-pc-windows-gnu/release/tws.exe builds/tws-win64/tws-win64.exe
-          tar -C builds -czvf dist/tws-win64.tar.gz tws-win64
+          cargo +nightly rustc --bin twilight-sparkle --release --verbose --target=x86_64-pc-windows-gnu -- -C linker=x86_64-w64-mingw32-gcc
+          mkdir builds/twilight-sparkle-win64
+          cp target/x86_64-pc-windows-gnu/release/twilight-sparkle.exe builds/twilight-sparkle-win64/twilight-sparkle-win64.exe
+          tar -C builds -czvf dist/twilight-sparkle-win64.tar.gz twilight-sparkle-win64
       - name: Build Linux
         run: |
-          cargo +nightly rustc --bin tws --release --verbose --target=x86_64-unknown-linux-gnu
-          mkdir builds/tws-linux
-          cp target/x86_64-unknown-linux-gnu/release/tws builds/tws-linux/tws-linux
-          tar -C builds -czvf dist/tws-linux.tar.gz tws-linux
+          cargo +nightly rustc --bin twilight-sparkle --release --verbose --target=x86_64-unknown-linux-gnu
+          mkdir builds/twilight-sparkle-linux
+          cp target/x86_64-unknown-linux-gnu/release/twilight-sparkle builds/twilight-sparkle-linux/twilight-sparkle-linux
+          tar -C builds -czvf dist/twilight-sparkle-linux.tar.gz twilight-sparkle-linux
       - name: Cache Mac OS dependencies
         id: cache-macos
         uses: actions/cache@v1
@@ -58,19 +58,25 @@ jobs:
           export LIBZ_SYS_STATIC=1
           export CC="$(pwd)/osxcross/target/bin/o64-clang"
           export CXX="$(pwd)/osxcross/target/bin/o64-clang++"
-          cargo +nightly build --bin tws --release --verbose --target x86_64-apple-darwin
-          mkdir builds/tws-macos
-          cp target/x86_64-apple-darwin/release/tws builds/tws-macos/tws-macos
-          tar -C builds -czvf dist/tws-macos.tar.gz tws-macos
+          cargo +nightly build --bin twilight-sparkle --release --verbose --target x86_64-apple-darwin
+          mkdir builds/twilight-sparkle-macos
+          cp target/x86_64-apple-darwin/release/twilight-sparkle builds/twilight-sparkle-macos/twilight-sparkle-macos
+          tar -C builds -czvf dist/twilight-sparkle-macos.tar.gz twilight-sparkle-macos
       - name: Upload release
         uses: softprops/action-gh-release@v1
         with:
           files: |
-            dist/tws-win64.tar.gz
-            dist/tws-linux.tar.gz
-            dist/tws-macos.tar.gz
+            dist/twilight-sparkle-win64.tar.gz
+            dist/twilight-sparkle-linux.tar.gz
+            dist/twilight-sparkle-macos.tar.gz
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Publish npm package
+        env:
+          NPM_ACCESS_TOKEN: ${{ secrets.NPM_ACCESS_TOKEN }}
+        run: |
+          echo "//registry.npmjs.org/:_authToken=$NPM_ACCESS_TOKEN" > ".npmrc"
+          npm publish
       - name: Publish cargo package
         env:
           CARGO_ACCESS_TOKEN: ${{ secrets.CARGO_ACCESS_TOKEN }}
