@@ -1,0 +1,39 @@
+{
+  "name": "twilight-sparkle",
+  "version": "0.2.0",
+  "description": "Parse Swagger 2.0 into a Typescript interface file.",
+  "type": "commonjs",
+  "main": "index.js",
+  "files": [
+    "npm/**/*"
+  ],
+  "bin": {
+    "twilight-sparkle": "./npm/run.js"
+  },
+  "scripts": {
+    "postinstall": "node ./npm/install.js",
+    "fmt": "prettier --write **/*.js",
+    "fmt:check": "prettier --check **/*.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/hbina/twilight-sparkle.git"
+  },
+  "keywords": [
+    "cli",
+    "swagger"
+  ],
+  "author": "",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/hbina/twilight-sparkle/issues"
+  },
+  "homepage": "https://github.com/hbina/twilight-sparkle#readme",
+  "dependencies": {
+    "binary-install": "^0.1.1",
+    "console.table": "^0.10.0"
+  },
+  "devDependencies": {
+    "prettier": "^2.2.1"
+  }
+}
