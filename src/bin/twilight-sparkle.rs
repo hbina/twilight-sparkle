@@ -1,6 +1,6 @@
 use parsers;
 
-fn main() -> Result<(), Box<dyn std::error::Error>> {
+fn main() {
     let matches = clap::App::new(clap::crate_name!())
         .version(clap::crate_version!())
         .author(clap::crate_authors!())
@@ -37,16 +37,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         )
         .get_matches();
     let input = if let Some(path) = matches.value_of("input") {
-        std::fs::read_to_string(path)?
+        std::fs::read_to_string(path).unwrap()
     } else {
         let mut input = String::new();
-        std::io::Read::read_to_string(&mut std::io::stdin(), &mut input)?;
+        std::io::Read::read_to_string(&mut std::io::stdin(), &mut input).unwrap();
         input
     };
     let expression = matches.value_of("expression").unwrap();
     let file_type = matches.value_of("file_type").unwrap();
-    let solver = parsers::Solver::create_solver(file_type);
-    let result = solver.solve(&input, expression);
+    let result = parsers::solve(file_type, &input, expression);
     println!("{}", result);
-    Ok(())
 }

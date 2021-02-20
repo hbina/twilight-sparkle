@@ -1,4 +1,4 @@
-# tws
+# twilight-sparkle
 
 Parse stdin with expressions of that file type.
 
@@ -8,7 +8,7 @@ Lets say we want to see the value of questions in this [json file](./examples/te
 
 ```
 twilight-sparkle on  master [?] is 📦 v0.1.0 via 🦀 v1.50.0
-❯ cat ./examples/test.json | tws -t JSON -e "quiz.sport.q1.question"
+❯ cat ./examples/test.json | twilight-sparkle -t JSON -e "quiz.sport.q1.question"
 Which one is correct team name in NBA?
 ```
 
@@ -24,7 +24,7 @@ Hanif Bin Ariffin <hanif.ariffin.4326@gmail.com>
 
 
 USAGE:
-    tws [OPTIONS] --expression <expression> --type <type>
+    twilight-sparkle [OPTIONS] --expression <expression> --type <type>
 
 FLAGS:
     -h, --help       Prints help information
