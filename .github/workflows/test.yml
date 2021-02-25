@@ -28,7 +28,7 @@ jobs:
           mkdir builds
       - name: Build Win64
         run: |
-          cargo rustc --bin twilight-sparkle --release --verbose --lto true --target=x86_64-pc-windows-gnu -- -C linker=x86_64-w64-mingw32-gcc
+          cargo rustc --bin twilight-sparkle --release --verbose --target=x86_64-pc-windows-gnu -- -C linker=x86_64-w64-mingw32-gcc
           mkdir builds/twilight-sparkle-win64
           cp target/x86_64-pc-windows-gnu/release/twilight-sparkle.exe builds/twilight-sparkle-win64/twilight-sparkle-win64.exe
           tar -C builds -czvf dist/twilight-sparkle-win64.tar.gz twilight-sparkle-win64
