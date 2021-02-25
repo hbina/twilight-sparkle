@@ -32,8 +32,14 @@ fn main() {
                 .short("e")
                 .long("expression")
                 .help("Expression to evaluate the input with")
-                .takes_value(true)
-                .required(true),
+                .takes_value(true),
+        )
+        .arg(
+            clap::Arg::with_name("replace")
+                .short("r")
+                .long("replace")
+                .help("Value to replace it with")
+                .takes_value(true),
         )
         .get_matches();
     let input = if let Some(path) = matches.value_of("input") {
@@ -43,8 +49,9 @@ fn main() {
         std::io::Read::read_to_string(&mut std::io::stdin(), &mut input).unwrap();
         input
     };
-    let expression = matches.value_of("expression").unwrap();
+    let expression = matches.value_of("expression");
+    let replace = matches.value_of("replace");
     let file_type = matches.value_of("file_type").unwrap();
-    let result = parsers::solve(file_type, &input, expression);
+    let result = parsers::solve(file_type, &input, expression, replace);
     println!("{}", result);
 }

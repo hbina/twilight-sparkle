@@ -7,6 +7,7 @@ pub enum JsonSolverError {
     IndexOutOfBound(usize, usize),
     ValueNotObject(String),
     NonNumericIndex(String),
+    ConversionError(String, Box<dyn std::error::Error>),
     Other(Box<dyn std::error::Error>),
 }
 
@@ -25,6 +26,33 @@ impl std::convert::From<std::num::ParseIntError> for JsonSolverError {
 }
 
 impl JsonSolver {
+    fn resolve_and_replace_json_value<'a>(
+        value: &'a mut serde_json::Value,
+        expression: &Vec<&str>,
+        replace: serde_json::Value,
+    ) -> Result<(), JsonSolverError> {
+        let mut reader = &mut *value;
+        for expr in expression.iter() {
+            match reader {
+                serde_json::Value::Object(map) => {
+                    let value = map.get_mut(*expr).unwrap();
+                    reader = value;
+                }
+                serde_json::Value::Array(arr) => {
+                    let index = expr.parse::<usize>().unwrap();
+                    reader = arr.get_mut(index).unwrap();
+                }
+                _ => {
+                    return Err(JsonSolverError::ValueNotObject(
+                        JsonSolver::json_value_to_string(reader),
+                    ))
+                }
+            }
+        }
+        *reader = replace;
+        Ok(())
+    }
+
     fn resolve_json_value_with_expression<'a>(
         value: &'a serde_json::Value,
         expression: &Vec<&str>,
@@ -69,16 +97,26 @@ impl JsonSolver {
 }
 
 impl crate::Solver for JsonSolver {
-    fn solve(input: &str, expression: &str) -> String {
-        let json_value = serde_json::from_str::<serde_json::Value>(&input)
-            .expect("Cannot parse input as a JSON file");
-        let expression = if expression.is_empty() {
-            vec![]
-        } else {
+    fn solve(input: &str, expression: Option<&str>, replace: Option<&str>) -> String {
+        let mut json_value = serde_json::from_str::<serde_json::Value>(&input)
+            .map_err(|x| JsonSolverError::ConversionError(input.to_string(), Box::new(x)))
+            .unwrap();
+        let expression = if let Some(expression) = expression {
             expression.split('.').collect()
+        } else {
+            vec![]
         };
-        let resolved_value =
-            JsonSolver::resolve_json_value_with_expression(&json_value, &expression).unwrap();
-        JsonSolver::json_value_to_string(resolved_value)
+        if let Some(replace) = replace {
+            let replace_value = serde_json::from_str::<serde_json::Value>(&replace)
+                .map_err(|x| JsonSolverError::ConversionError(replace.to_string(), Box::new(x)))
+                .unwrap();
+            JsonSolver::resolve_and_replace_json_value(&mut json_value, &expression, replace_value)
+                .unwrap();
+            JsonSolver::json_value_to_string(&json_value)
+        } else {
+            let resolved_value =
+                JsonSolver::resolve_json_value_with_expression(&json_value, &expression).unwrap();
+            JsonSolver::json_value_to_string(resolved_value)
+        }
     }
 }

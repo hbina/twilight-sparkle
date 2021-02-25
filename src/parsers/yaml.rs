@@ -3,10 +3,8 @@ pub struct YamlSolver;
 
 #[derive(Debug)]
 pub enum YamlSolverError {
-    KeyNotExist(Vec<(String, String)>, String),
-    IndexOutOfBound(usize, usize),
     ValueNotObject(String),
-    NonNumericIndex(String),
+    ConversionError(String, Box<dyn std::error::Error>),
     Other(Box<dyn std::error::Error>),
 }
 
@@ -24,7 +22,41 @@ impl std::convert::From<std::num::ParseIntError> for YamlSolverError {
     }
 }
 
+impl std::convert::From<serde_yaml::Error> for YamlSolverError {
+    fn from(err: serde_yaml::Error) -> Self {
+        YamlSolverError::Other(Box::new(err))
+    }
+}
+
 impl YamlSolver {
+    fn resolve_and_replace_yaml_value<'a>(
+        value: &'a mut serde_yaml::Value,
+        expression: &Vec<&str>,
+        replace: serde_yaml::Value,
+    ) -> Result<(), YamlSolverError> {
+        let mut reader = &mut *value;
+        for expr in expression.iter() {
+            match reader {
+                serde_yaml::Value::Mapping(map) => {
+                    let key = serde_yaml::from_str(expr).unwrap();
+                    let value = map.get_mut(&key).unwrap();
+                    reader = value;
+                }
+                serde_yaml::Value::Sequence(arr) => {
+                    let index = expr.parse::<usize>().unwrap();
+                    reader = arr.get_mut(index).unwrap();
+                }
+                _ => {
+                    return Err(YamlSolverError::ValueNotObject(
+                        YamlSolver::yaml_value_to_string(reader),
+                    ))
+                }
+            }
+        }
+        *reader = replace;
+        Ok(())
+    }
+
     fn resolve_yaml_value_with_expression<'a>(
         value: &'a serde_yaml::Value,
         expression: &Vec<&str>,
@@ -34,30 +66,12 @@ impl YamlSolver {
             match reader {
                 serde_yaml::Value::Mapping(map) => {
                     let key = serde_yaml::from_str(expr).unwrap();
-                    if let Some(value) = map.get(&key) {
-                        reader = value;
-                    } else {
-                        let keys = map
-                            .iter()
-                            .map(|(k, v)| {
-                                match (serde_yaml::to_string(k), serde_yaml::to_string(v)) {
-                                    (Ok(k), Ok(v)) => Ok((k, v)),
-                                    (Err(e), _) => Err(e),
-                                    (_, Err(e)) => Err(e),
-                                }
-                            })
-                            .collect::<serde_yaml::Result<_>>()
-                            .unwrap();
-                        return Err(YamlSolverError::KeyNotExist(keys, expr.to_string()));
-                    }
+                    let value = map.get(&key).unwrap();
+                    reader = value;
                 }
                 serde_yaml::Value::Sequence(arr) => {
-                    let index = expr
-                        .parse::<usize>()
-                        .map_err(|_| YamlSolverError::NonNumericIndex(expr.to_string()))?;
-                    reader = arr
-                        .get(index)
-                        .ok_or_else(|| YamlSolverError::IndexOutOfBound(index, arr.len()))?;
+                    let index = expr.parse::<usize>().unwrap();
+                    reader = arr.get(index).unwrap();
                 }
                 _ => {
                     return Err(YamlSolverError::ValueNotObject(
@@ -78,16 +92,27 @@ impl YamlSolver {
 }
 
 impl crate::Solver for YamlSolver {
-    fn solve(input: &str, expression: &str) -> String {
-        let json_value = serde_yaml::from_str::<serde_yaml::Value>(&input)
-            .expect("Cannot parse input as a JSON file");
-        let expression = if expression.is_empty() {
-            vec![]
-        } else {
+    fn solve(input: &str, expression: Option<&str>, replace: Option<&str>) -> String {
+        println!("replace:{:?}", replace);
+        let mut json_value = serde_yaml::from_str::<serde_yaml::Value>(&input)
+            .map_err(|x| YamlSolverError::ConversionError(input.to_string(), Box::new(x)))
+            .unwrap();
+        let expression = if let Some(expression) = expression {
             expression.split('.').collect()
+        } else {
+            vec![]
         };
-        let resolved_value =
-            YamlSolver::resolve_yaml_value_with_expression(&json_value, &expression).unwrap();
-        YamlSolver::yaml_value_to_string(resolved_value)
+        if let Some(replace) = replace {
+            let replace_value = serde_yaml::from_str::<serde_yaml::Value>(&replace)
+                .map_err(|x| YamlSolverError::ConversionError(input.to_string(), Box::new(x)))
+                .unwrap();
+            YamlSolver::resolve_and_replace_yaml_value(&mut json_value, &expression, replace_value)
+                .unwrap();
+            YamlSolver::yaml_value_to_string(&json_value)
+        } else {
+            let resolved_value =
+                YamlSolver::resolve_yaml_value_with_expression(&json_value, &expression).unwrap();
+            YamlSolver::yaml_value_to_string(resolved_value)
+        }
     }
 }
