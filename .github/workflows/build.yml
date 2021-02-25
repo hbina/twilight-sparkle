@@ -58,8 +58,7 @@ jobs:
           export LIBZ_SYS_STATIC=1
           export CC="$(pwd)/osxcross/target/bin/o64-clang"
           export CXX="$(pwd)/osxcross/target/bin/o64-clang++"
-          cargo
- build --bin twilight-sparkle --release --verbose --target x86_64-apple-darwin
+          cargo build --bin twilight-sparkle --release --verbose --target x86_64-apple-darwin
           mkdir builds/twilight-sparkle-macos
           cp target/x86_64-apple-darwin/release/twilight-sparkle builds/twilight-sparkle-macos/twilight-sparkle-macos
           tar -C builds -czvf dist/twilight-sparkle-macos.tar.gz twilight-sparkle-macos
