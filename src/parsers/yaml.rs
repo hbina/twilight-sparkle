@@ -93,7 +93,6 @@ impl YamlSolver {
 
 impl crate::Solver for YamlSolver {
     fn solve(input: &str, expression: Option<&str>, replace: Option<&str>) -> String {
-        println!("replace:{:?}", replace);
         let mut json_value = serde_yaml::from_str::<serde_yaml::Value>(&input)
             .map_err(|x| YamlSolverError::ConversionError(input.to_string(), Box::new(x)))
             .unwrap();
