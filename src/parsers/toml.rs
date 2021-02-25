@@ -1,11 +1,10 @@
-#[derive(Debug)]
-pub struct YamlSolver;
+pub struct TomlSolver;
 
-impl YamlSolver {
+impl TomlSolver {
     fn resolve_and_replace_value<'a>(
-        value: &'a mut serde_yaml::Value,
+        value: &'a mut toml::Value,
         expression: &Vec<&str>,
-        replace: serde_yaml::Value,
+        replace: toml::Value,
     ) -> Result<(), crate::TError> {
         let mut reader = &mut *value;
         for expr in expression.iter() {
@@ -13,6 +12,7 @@ impl YamlSolver {
                 reader = reader
                     .get_mut(index)
                     .ok_or_else(|| crate::TError::KeyNotExist(expr.to_string()))?;
+            } else {
                 reader = reader
                     .get_mut(expr)
                     .ok_or_else(|| crate::TError::KeyNotExist(expr.to_string()))?;
@@ -23,11 +23,11 @@ impl YamlSolver {
     }
 
     fn resolve_value<'a>(
-        value: &'a serde_yaml::Value,
+        value: &'a toml::Value,
         expression: &Vec<&str>,
-    ) -> Result<&'a serde_yaml::Value, crate::TError> {
+    ) -> Result<&'a toml::Value, crate::TError> {
         let mut reader = value;
-        for expr in expression.iter() {
+        for expr in expression {
             if let Ok(index) = expr.parse::<usize>() {
                 reader = reader
                     .get(index)
@@ -41,17 +41,17 @@ impl YamlSolver {
         Ok(reader)
     }
 
-    fn value_to_string(value: &serde_yaml::Value) -> String {
+    fn value_to_string(value: &toml::Value) -> String {
         match value {
-            serde_yaml::Value::String(s) => s.clone(),
-            o => serde_yaml::to_string(o).unwrap(),
+            toml::Value::String(s) => s.clone(),
+            o => toml::to_string(o).unwrap(),
         }
     }
 }
 
-impl crate::Solver for YamlSolver {
+impl crate::Solver for TomlSolver {
     fn solve(input: &str, expression: Option<&str>, replace: Option<&str>) -> String {
-        let mut json_value = serde_yaml::from_str::<serde_yaml::Value>(&input)
+        let mut toml_value = toml::from_str::<toml::Value>(&input)
             .map_err(|x| crate::TError::ConversionError(input.to_string(), Box::new(x)))
             .unwrap();
         let expression = if let Some(expression) = expression {
@@ -60,15 +60,15 @@ impl crate::Solver for YamlSolver {
             vec![]
         };
         if let Some(replace) = replace {
-            let replace_value = serde_yaml::from_str::<serde_yaml::Value>(&replace)
-                .map_err(|x| crate::TError::ConversionError(input.to_string(), Box::new(x)))
+            let replace_value = toml::from_str::<toml::Value>(&replace)
+                .map_err(|x| crate::TError::ConversionError(replace.to_string(), Box::new(x)))
                 .unwrap();
-            YamlSolver::resolve_and_replace_value(&mut json_value, &expression, replace_value)
+            TomlSolver::resolve_and_replace_value(&mut toml_value, &expression, replace_value)
                 .unwrap();
-            YamlSolver::value_to_string(&json_value)
+            TomlSolver::value_to_string(&toml_value)
         } else {
-            let resolved_value = YamlSolver::resolve_value(&json_value, &expression).unwrap();
-            YamlSolver::value_to_string(resolved_value)
+            let resolved_value = TomlSolver::resolve_value(&toml_value, &expression).unwrap();
+            TomlSolver::value_to_string(resolved_value)
         }
     }
 }

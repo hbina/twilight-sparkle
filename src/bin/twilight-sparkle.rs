@@ -53,5 +53,17 @@ fn main() {
     let replace = matches.value_of("replace");
     let file_type = matches.value_of("file_type").unwrap();
     let result = parsers::solve(file_type, &input, expression, replace);
-    println!("{}", result);
+    if let Some(output) = matches.value_of("output") {
+        let mut file = std::fs::OpenOptions::new()
+            .read(true)
+            .write(true)
+            .create(true)
+            .truncate(true)
+            .open(output)
+            .unwrap();
+        std::io::Write::write_all(&mut file, result.as_bytes()).unwrap();
+        std::io::Write::flush(&mut file).unwrap();
+    } else {
+        println!("{}", result);
+    }
 }
