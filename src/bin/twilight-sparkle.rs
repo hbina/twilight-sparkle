@@ -39,17 +39,26 @@ fn main() {
                 .takes_value(true),
         )
         .get_matches();
-    let input = if let Some(path) = matches.value_of("file") {
-        std::fs::read_to_string(path).unwrap()
+    let (input, ext) = if let Some(path) = matches.value_of("file") {
+        (
+            std::fs::read_to_string(path).unwrap(),
+            matches
+                .value_of("file-type")
+                .map(String::from)
+                .unwrap_or_else(|| {
+                    get_extension_from_filename(path)
+                        .expect("Cannot parse the extension from the file path.")
+                }),
+        )
     } else {
         let mut input = String::new();
         std::io::Read::read_to_string(&mut std::io::stdin(), &mut input).unwrap();
-        input
+        let file_type = matches.value_of("file-type").map(String::from).expect("Please provide argument `file-type` or else we can't infer what file type of the stdin.");
+        (input, file_type)
     };
     let expression = matches.value_of("expression");
     let replace = matches.value_of("replace");
-    let file_type = matches.value_of("file-type").unwrap();
-    let result = parsers::solve(file_type, &input, expression, replace);
+    let result = parsers::solve(ext.as_ref(), &input, expression, replace);
     if let Some(output) = matches.value_of("write") {
         let mut file = std::fs::OpenOptions::new()
             .read(true)
@@ -64,4 +73,11 @@ fn main() {
     } else {
         println!("{}", result);
     }
+}
+
+fn get_extension_from_filename(filename: &str) -> Option<String> {
+    std::path::Path::new(filename)
+        .extension()
+        .and_then(std::ffi::OsStr::to_str)
+        .map(String::from)
 }
