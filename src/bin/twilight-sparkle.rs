@@ -24,7 +24,7 @@ fn main() {
                     r##"What to interpret the input as. This is usually helpful if using stdin because we only infer the type from the extension."##,
                 )
                 .takes_value(true)
-                .required(true),
+                .required(false),
         )
         .arg(
             clap::Arg::with_name("expression")
