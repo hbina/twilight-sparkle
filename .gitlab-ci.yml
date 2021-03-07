@@ -1,0 +1,8 @@
+test:
+  stage: test
+  image: rust:latest
+  except:
+    - tags
+  script:
+    - cargo check
+    - cargo test --all
