@@ -45,7 +45,7 @@ impl JsonSolver {
     fn value_to_string(value: &serde_json::Value) -> String {
         match value {
             serde_json::Value::String(s) => s.clone(),
-            o => serde_json::to_string(o).unwrap(),
+            o => serde_json::to_string_pretty(o).unwrap(),
         }
     }
 }
