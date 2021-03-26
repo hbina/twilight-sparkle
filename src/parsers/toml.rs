@@ -44,7 +44,7 @@ impl TomlSolver {
     fn value_to_string(value: &toml::Value) -> String {
         match value {
             toml::Value::String(s) => s.clone(),
-            o => toml::to_string(o).unwrap(),
+            o => toml::to_string_pretty(o).unwrap(),
         }
     }
 }
