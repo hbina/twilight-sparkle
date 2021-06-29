@@ -1,6 +1,6 @@
 [package]
 name = "twilight-sparkle"
-version = "0.2.4"
+version = "0.2.5"
 authors = ["Hanif Bin Ariffin <hanif.ariffin.4326@gmail.com>"]
 license = "MIT"
 edition = "2018"
