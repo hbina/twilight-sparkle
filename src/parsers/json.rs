@@ -18,7 +18,8 @@ impl From<&clap::ArgMatches<'_>> for JsonSolver {
 
 impl JsonSolver {
     pub fn resolve_value<'a>(&self, value: &'a str) -> Result<String, crate::TError> {
-        let mut result = vec![serde_json::from_str::<serde_json::Value>(value)?];
+        let root = serde_json::from_str::<serde_json::Value>(value)?;
+        let mut result = vec![&root];
         for expr in &self.expression {
             result = result
                 .into_iter()
@@ -27,13 +28,12 @@ impl JsonSolver {
                         .into_iter()
                         .map(|o| {
                             o.get(expr.as_str())
-                                .map(|v| v.clone())
                                 .ok_or_else(|| crate::TError::KeyNotExist(expr.clone()))
                         })
                         .collect::<Result<Vec<_>, _>>(),
                     o => o
                         .get(expr.as_str())
-                        .map(|v| vec![v.clone()])
+                        .map(|v| vec![v])
                         .ok_or_else(|| crate::TError::KeyNotExist(expr.clone())),
                 })
                 .collect::<Result<Vec<_>, _>>()?
