@@ -1,6 +1,7 @@
 #[derive(Debug)]
 pub struct JsonSolver {
     expression: Vec<String>,
+    pretty: bool,
 }
 
 impl From<&clap::ArgMatches<'_>> for JsonSolver {
@@ -10,45 +11,48 @@ impl From<&clap::ArgMatches<'_>> for JsonSolver {
             // TODO: I am pretty sure its perfectly legal to use "." as a value key in JSON?
             .map(|s| s.split(".").map(String::from).collect::<_>())
             .unwrap_or_default();
-        JsonSolver { expression }
+        let pretty = input.is_present("pretty");
+        JsonSolver { expression, pretty }
     }
 }
 
 impl JsonSolver {
-    pub fn resolve_value<'a>(self, value: &'a str) -> Result<String, crate::TError> {
+    pub fn resolve_value<'a>(&self, value: &'a str) -> Result<String, crate::TError> {
         let mut result = vec![serde_json::from_str::<serde_json::Value>(value)?];
-        for expr in self.expression {
+        for expr in &self.expression {
             result = result
-                .iter()
-                .map(|reader| {
-                    reader
-                        .get(expr.as_str())
-                        .map(|m| {
-                            let nextr = match m {
-                                serde_json::Value::Array(v) => v.clone(),
-                                r => vec![r.clone()],
-                            };
-                            nextr
+                .into_iter()
+                .map(|reader| match reader {
+                    serde_json::Value::Array(v) => v
+                        .into_iter()
+                        .map(|o| {
+                            o.get(expr.as_str())
+                                .map(|v| v.clone())
+                                .ok_or_else(|| crate::TError::KeyNotExist(expr.clone()))
                         })
-                        .ok_or_else(|| crate::TError::KeyNotExist(expr.clone()))
+                        .collect::<Result<Vec<_>, _>>(),
+                    o => o
+                        .get(expr.as_str())
+                        .map(|v| vec![v.clone()])
+                        .ok_or_else(|| crate::TError::KeyNotExist(expr.clone())),
                 })
                 .collect::<Result<Vec<_>, _>>()?
-                .iter()
+                .into_iter()
                 .flatten()
-                .cloned()
                 .collect::<Vec<_>>();
         }
         Ok(result
             .iter()
-            .map(JsonSolver::value_to_string)
+            .map(|s| JsonSolver::value_to_string(self.pretty, s))
             .collect::<Vec<_>>()
             .join("\n"))
     }
 
-    fn value_to_string(value: &serde_json::Value) -> String {
-        match value {
-            serde_json::Value::String(s) => s.clone(),
-            o => serde_json::to_string(o).unwrap(),
+    fn value_to_string(pretty: bool, value: &serde_json::Value) -> String {
+        if pretty {
+            serde_json::to_string_pretty(value).unwrap()
+        } else {
+            serde_json::to_string(value).unwrap()
         }
     }
 }
@@ -70,6 +74,12 @@ pub fn clap_app() -> clap::App<'static, 'static> {
                 .long("expression")
                 .help("Expression to evaluate the input with.")
                 .takes_value(true),
+        )
+        .arg(
+            clap::Arg::with_name("pretty")
+                .long("pretty")
+                .help("Pretty prints the output")
+                .takes_value(false),
         )
         .author(clap::crate_authors!())
 }
