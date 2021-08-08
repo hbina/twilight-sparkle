@@ -1,18 +1,21 @@
-mod json;
-mod toml;
-mod yaml;
+pub mod json;
+pub mod toml;
+pub mod yaml;
 
-pub fn solve(
-    file_type: &str,
-    input: &str,
-    expression: Option<&str>,
-    replace: Option<&str>,
-) -> String {
-    match file_type.to_ascii_lowercase().as_ref() {
-        "json" => json::JsonSolver::solve(input, expression, replace),
-        "yaml" | "yml" => yaml::YamlSolver::solve(input, expression, replace),
-        "toml" => toml::TomlSolver::solve(input, expression, replace),
-        _ => panic!("Unknown file_type:{}", file_type),
+pub enum SupportedFiles {
+    JSON,
+    TOML,
+    YAML,
+}
+
+impl SupportedFiles {
+    pub fn from_str(input: &str) -> Option<SupportedFiles> {
+        match input {
+            "json" => Some(SupportedFiles::JSON),
+            "toml" => Some(SupportedFiles::TOML),
+            "yaml" => Some(SupportedFiles::YAML),
+            _ => None,
+        }
     }
 }
 

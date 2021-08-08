@@ -72,3 +72,51 @@ impl crate::Solver for YamlSolver {
         }
     }
 }
+
+pub fn clap_app() -> clap::App<'static, 'static> {
+    clap::App::new("yaml")
+        .about("Perform queries on JSON files")
+        .arg(
+            clap::Arg::with_name("file")
+                .long("file")
+                .help(
+                    "Input file. \
+                        If not specified, will read from stdin.",
+                )
+                .takes_value(true),
+        )
+        .arg(
+            clap::Arg::with_name("write")
+                .long("write")
+                .help(
+                    "Output file. \
+                        If not specified, will write to stdout.",
+                )
+                .takes_value(true),
+        )
+        .arg(
+            clap::Arg::with_name("file-type")
+                .long("file-type")
+                .help(
+                    "What to interpret the input as. \
+                        This is usually helpful if using stdin because \
+                        we only infer the type from the extension.",
+                )
+                .takes_value(true)
+                .required(false)
+                .possible_values(&["json", "yaml", "toml"]),
+        )
+        .arg(
+            clap::Arg::with_name("expression")
+                .long("expression")
+                .help("Expression to evaluate the input with.")
+                .takes_value(true),
+        )
+        .arg(
+            clap::Arg::with_name("replace")
+                .long("replace")
+                .help("Value to replace the value resolved by the expression with.")
+                .takes_value(true),
+        )
+        .author(clap::crate_authors!())
+}

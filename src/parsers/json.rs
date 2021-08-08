@@ -1,75 +1,75 @@
 #[derive(Debug)]
-pub struct JsonSolver;
+pub struct JsonSolver {
+    expression: Vec<String>,
+}
+
+impl From<&clap::ArgMatches<'_>> for JsonSolver {
+    fn from(input: &clap::ArgMatches<'_>) -> JsonSolver {
+        let expression = input
+            .value_of("expression")
+            // TODO: I am pretty sure its perfectly legal to use "." as a value key in JSON?
+            .map(|s| s.split(".").map(String::from).collect::<_>())
+            .unwrap_or_default();
+        JsonSolver { expression }
+    }
+}
 
 impl JsonSolver {
-    fn resolve_and_replace_value<'a>(
-        value: &'a mut serde_json::Value,
-        expression: &Vec<&str>,
-        replace: serde_json::Value,
-    ) -> Result<(), crate::TError> {
-        let mut reader = &mut *value;
-        for expr in expression.iter() {
-            if let Ok(index) = expr.parse::<usize>() {
-                reader = reader
-                    .get_mut(index)
-                    .ok_or_else(|| crate::TError::KeyNotExist(expr.to_string()))?;
-            } else {
-                reader = reader
-                    .get_mut(expr)
-                    .ok_or_else(|| crate::TError::KeyNotExist(expr.to_string()))?;
-            }
+    pub fn resolve_value<'a>(self, value: &'a str) -> Result<String, crate::TError> {
+        let mut result = vec![serde_json::from_str::<serde_json::Value>(value)?];
+        for expr in self.expression {
+            result = result
+                .iter()
+                .map(|reader| {
+                    reader
+                        .get(expr.as_str())
+                        .map(|m| {
+                            let nextr = match m {
+                                serde_json::Value::Array(v) => v.clone(),
+                                r => vec![r.clone()],
+                            };
+                            nextr
+                        })
+                        .ok_or_else(|| crate::TError::KeyNotExist(expr.clone()))
+                })
+                .collect::<Result<Vec<_>, _>>()?
+                .iter()
+                .flatten()
+                .cloned()
+                .collect::<Vec<_>>();
         }
-        *reader = replace;
-        Ok(())
-    }
-
-    fn resolve_value<'a>(
-        value: &'a serde_json::Value,
-        expression: &Vec<&str>,
-    ) -> Result<&'a serde_json::Value, crate::TError> {
-        let mut reader = value;
-        for expr in expression {
-            if let Ok(index) = expr.parse::<usize>() {
-                reader = reader
-                    .get(index)
-                    .ok_or_else(|| crate::TError::KeyNotExist(expr.to_string()))?;
-            } else {
-                reader = reader
-                    .get(expr)
-                    .ok_or_else(|| crate::TError::KeyNotExist(expr.to_string()))?;
-            }
-        }
-        Ok(reader)
+        Ok(result
+            .iter()
+            .map(JsonSolver::value_to_string)
+            .collect::<Vec<_>>()
+            .join("\n"))
     }
 
     fn value_to_string(value: &serde_json::Value) -> String {
         match value {
             serde_json::Value::String(s) => s.clone(),
-            o => serde_json::to_string_pretty(o).unwrap(),
+            o => serde_json::to_string(o).unwrap(),
         }
     }
 }
 
-impl crate::Solver for JsonSolver {
-    fn solve(input: &str, expression: Option<&str>, replace: Option<&str>) -> String {
-        let mut json_value = serde_json::from_str::<serde_json::Value>(&input)
-            .map_err(|x| crate::TError::ConversionError(input.to_string(), Box::new(x)))
-            .unwrap();
-        let expression = if let Some(expression) = expression {
-            expression.split('.').collect()
-        } else {
-            vec![]
-        };
-        if let Some(replace) = replace {
-            let replace_value = serde_json::from_str::<serde_json::Value>(&replace)
-                .map_err(|x| crate::TError::ConversionError(replace.to_string(), Box::new(x)))
-                .unwrap();
-            JsonSolver::resolve_and_replace_value(&mut json_value, &expression, replace_value)
-                .unwrap();
-            JsonSolver::value_to_string(&json_value)
-        } else {
-            let resolved_value = JsonSolver::resolve_value(&json_value, &expression).unwrap();
-            JsonSolver::value_to_string(resolved_value)
-        }
-    }
+pub fn clap_app() -> clap::App<'static, 'static> {
+    clap::App::new("json")
+        .about("Perform queries on JSON files")
+        .arg(
+            clap::Arg::with_name("file")
+                .long("file")
+                .help(
+                    "Input file. \
+                        If not specified, will read from stdin.",
+                )
+                .takes_value(true),
+        )
+        .arg(
+            clap::Arg::with_name("expression")
+                .long("expression")
+                .help("Expression to evaluate the input with.")
+                .takes_value(true),
+        )
+        .author(clap::crate_authors!())
 }
