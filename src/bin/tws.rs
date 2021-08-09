@@ -1,4 +1,4 @@
-use parsers::{self, json::JsonSolver};
+use parsers::{self, json::JsonSolver, toml::TomlSolver, yaml::YamlSolver};
 
 fn main() {
     let matches = clap::App::new(clap::crate_name!())
@@ -20,8 +20,22 @@ fn main() {
                 println!("{}", config);
             }
         }
-        Some(parsers::SupportedFiles::TOML) => todo!(),
-        Some(parsers::SupportedFiles::YAML) => todo!(),
+        Some(parsers::SupportedFiles::TOML) => {
+            if let Some(matches) = args {
+                let mut input = String::new();
+                std::io::Read::read_to_string(&mut std::io::stdin(), &mut input).unwrap();
+                let config = TomlSolver::from(matches).resolve_value(&input).unwrap();
+                println!("{}", config);
+            }
+        }
+        Some(parsers::SupportedFiles::YAML) => {
+            if let Some(matches) = args {
+                let mut input = String::new();
+                std::io::Read::read_to_string(&mut std::io::stdin(), &mut input).unwrap();
+                let config = YamlSolver::from(matches).resolve_value(&input).unwrap();
+                println!("{}", config);
+            }
+        }
         None => {
             eprintln!("Unsupport file type. Please see --help for the list of support file types");
         }

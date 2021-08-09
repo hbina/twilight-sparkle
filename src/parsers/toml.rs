@@ -1,75 +1,58 @@
-pub struct TomlSolver;
+use crate::TError;
 
-impl TomlSolver {
-    fn resolve_and_replace_value<'a>(
-        value: &'a mut toml::Value,
-        expression: &Vec<&str>,
-        replace: toml::Value,
-    ) -> Result<(), crate::TError> {
-        let mut reader = &mut *value;
-        for expr in expression.iter() {
-            if let Ok(index) = expr.parse::<usize>() {
-                reader = reader
-                    .get_mut(index)
-                    .ok_or_else(|| crate::TError::KeyNotExist(expr.to_string()))?;
-            } else {
-                reader = reader
-                    .get_mut(expr)
-                    .ok_or_else(|| crate::TError::KeyNotExist(expr.to_string()))?;
-            }
-        }
-        *reader = replace;
-        Ok(())
-    }
+pub struct TomlSolver {
+    expression: Vec<String>,
+}
 
-    fn resolve_value<'a>(
-        value: &'a toml::Value,
-        expression: &Vec<&str>,
-    ) -> Result<&'a toml::Value, crate::TError> {
-        let mut reader = value;
-        for expr in expression {
-            if let Ok(index) = expr.parse::<usize>() {
-                reader = reader
-                    .get(index)
-                    .ok_or_else(|| crate::TError::KeyNotExist(expr.to_string()))?;
-            } else {
-                reader = reader
-                    .get(expr)
-                    .ok_or_else(|| crate::TError::KeyNotExist(expr.to_string()))?;
-            }
-        }
-        Ok(reader)
-    }
-
-    fn value_to_string(value: &toml::Value) -> String {
-        match value {
-            toml::Value::String(s) => s.clone(),
-            o => toml::to_string_pretty(o).unwrap(),
-        }
+impl From<&clap::ArgMatches<'_>> for TomlSolver {
+    fn from(input: &clap::ArgMatches<'_>) -> TomlSolver {
+        let expression = input
+            .value_of("expression")
+            // TODO: I am pretty sure its perfectly legal to use "." as a value key in JSON?
+            .map(|s| s.split(".").map(String::from).collect::<_>())
+            .unwrap_or_default();
+        TomlSolver { expression }
     }
 }
 
-impl crate::Solver for TomlSolver {
-    fn solve(input: &str, expression: Option<&str>, replace: Option<&str>) -> String {
-        let mut toml_value = toml::from_str::<toml::Value>(&input)
-            .map_err(|x| crate::TError::ConversionError(input.to_string(), Box::new(x)))
-            .unwrap();
-        let expression = if let Some(expression) = expression {
-            expression.split('.').collect()
-        } else {
-            vec![]
-        };
-        if let Some(replace) = replace {
-            let replace_value = toml::from_str::<toml::Value>(&replace)
-                .map_err(|x| crate::TError::ConversionError(replace.to_string(), Box::new(x)))
-                .unwrap();
-            TomlSolver::resolve_and_replace_value(&mut toml_value, &expression, replace_value)
-                .unwrap();
-            TomlSolver::value_to_string(&toml_value)
-        } else {
-            let resolved_value = TomlSolver::resolve_value(&toml_value, &expression).unwrap();
-            TomlSolver::value_to_string(resolved_value)
+impl TomlSolver {
+    pub fn resolve_value<'a>(&self, value: &'a str) -> Result<String, TError> {
+        let root = toml::from_str::<toml::Value>(value)?;
+        let mut result = vec![&root];
+        for expr in &self.expression {
+            result = result
+                .into_iter()
+                .map(
+                    |reader| -> Box<dyn Iterator<Item = Result<&toml::Value, TError>>> {
+                        match reader {
+                            toml::Value::Array(v) => {
+                                let next = v.into_iter().map(|o| {
+                                    o.get(expr.as_str())
+                                        .ok_or_else(|| TError::KeyNotExist(expr.clone()))
+                                });
+                                Box::new(next)
+                            }
+                            o => {
+                                let next = std::iter::once(
+                                    o.get(expr.as_str())
+                                        .ok_or_else(|| TError::KeyNotExist(expr.clone())),
+                                );
+                                Box::new(next)
+                            }
+                        }
+                    },
+                )
+                .flatten()
+                .collect::<Result<Vec<_>, _>>()?;
         }
+        Ok(result
+            .iter()
+            .map(|s| format!("{}\n", TomlSolver::value_to_string(s)))
+            .collect::<String>())
+    }
+
+    fn value_to_string(value: &toml::Value) -> String {
+        serde_yaml::to_string(value).unwrap()
     }
 }
 
