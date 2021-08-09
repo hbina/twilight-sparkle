@@ -4,7 +4,7 @@ version = "0.2.5"
 authors = ["Hanif Bin Ariffin <hanif.ariffin.4326@gmail.com>"]
 license = "MIT"
 edition = "2018"
-description = "Read values from stdin using expressions understood by that file type"
+description = "Perform queries on files"
 repository = "https://github.com/hbina/tws"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
@@ -12,9 +12,8 @@ include = ["src/**/*", "Cargo.toml"]
 
 [dependencies]
 clap = "2.33.3"
-csv = "1.1.6"
 httparse = "1.4.1"
-serde_json = "1.0.64"
+serde_json = "1.0.66"
 serde_yaml = "0.8.17"
 toml = "0.5.8"
 
