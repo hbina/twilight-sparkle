@@ -1,3 +1,5 @@
+use crate::TError;
+
 #[derive(Debug)]
 pub struct JsonSolver {
     expression: Vec<String>,
@@ -23,23 +25,28 @@ impl JsonSolver {
         for expr in &self.expression {
             result = result
                 .into_iter()
-                .map(|reader| match reader {
-                    serde_json::Value::Array(v) => v
-                        .into_iter()
-                        .map(|o| {
-                            o.get(expr.as_str())
-                                .ok_or_else(|| crate::TError::KeyNotExist(expr.clone()))
-                        })
-                        .collect::<Result<Vec<_>, _>>(),
-                    o => o
-                        .get(expr.as_str())
-                        .map(|v| vec![v])
-                        .ok_or_else(|| crate::TError::KeyNotExist(expr.clone())),
-                })
-                .collect::<Result<Vec<_>, _>>()?
-                .into_iter()
+                .map(
+                    |reader| -> Box<dyn Iterator<Item = Result<&serde_json::Value, TError>>> {
+                        match reader {
+                            serde_json::Value::Array(v) => {
+                                let next = v.into_iter().map(|o| {
+                                    o.get(expr.as_str())
+                                        .ok_or_else(|| crate::TError::KeyNotExist(expr.clone()))
+                                });
+                                Box::new(next)
+                            }
+                            o => {
+                                let next = std::iter::once(
+                                    o.get(expr.as_str())
+                                        .ok_or_else(|| crate::TError::KeyNotExist(expr.clone())),
+                                );
+                                Box::new(next)
+                            }
+                        }
+                    },
+                )
                 .flatten()
-                .collect::<Vec<_>>();
+                .collect::<Result<Vec<_>, _>>()?;
         }
         Ok(result
             .iter()
