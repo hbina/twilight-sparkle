@@ -145,6 +145,7 @@ dependencies = [
 name = "twilight-sparkle"
 version = "0.2.5"
 dependencies = [
+ "atty",
  "clap",
  "httparse",
  "serde_json",

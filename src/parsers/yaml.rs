@@ -9,7 +9,6 @@ impl From<&clap::ArgMatches<'_>> for YamlSolver {
     fn from(input: &clap::ArgMatches<'_>) -> YamlSolver {
         let expression = input
             .value_of("expression")
-            // TODO: I am pretty sure its perfectly legal to use "." as a value key in JSON?
             .map(|s| s.split(".").map(String::from).collect::<_>())
             .unwrap_or_default();
         YamlSolver { expression }
