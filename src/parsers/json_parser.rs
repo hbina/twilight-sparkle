@@ -14,7 +14,6 @@ impl From<&clap::ArgMatches<'_>> for JsonSolver {
             .map(|s| s.split(".").map(String::from).collect::<_>())
             .unwrap_or_default();
         let pretty = input.is_present("pretty");
-        println!("expression:{:#?}", expression);
         JsonSolver { expression, pretty }
     }
 }
