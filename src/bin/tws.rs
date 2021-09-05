@@ -1,13 +1,13 @@
-use parsers::{self, json::JsonSolver, toml::TomlSolver, yaml::YamlSolver};
+use parsers::{self, json_parser::JsonSolver, toml_parser::TomlSolver, yaml_parser::YamlSolver};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let matches = clap::App::new(clap::crate_name!())
         .version(clap::crate_version!())
         .author(clap::crate_authors!())
         .about(clap::crate_description!())
-        .subcommand(crate::parsers::json::clap_app())
-        .subcommand(crate::parsers::toml::clap_app())
-        .subcommand(crate::parsers::yaml::clap_app())
+        .subcommand(crate::parsers::json_parser::clap_app())
+        .subcommand(crate::parsers::toml_parser::clap_app())
+        .subcommand(crate::parsers::yaml_parser::clap_app())
         .arg(
             clap::Arg::with_name("input-file")
                 .long("input-file")

@@ -1,6 +1,6 @@
-pub mod json;
-pub mod toml;
-pub mod yaml;
+pub mod json_parser;
+pub mod toml_parser;
+pub mod yaml_parser;
 
 pub enum SupportedFiles {
     JSON,
@@ -47,7 +47,7 @@ macro_rules! impl_error {
 impl_error!(std::num::ParseIntError);
 impl_error!(serde_json::Error);
 impl_error!(serde_yaml::Error);
-impl_error!(::toml::de::Error);
+impl_error!(toml::de::Error);
 
 trait Solver {
     fn solve(input: &str, expression: Option<&str>, replace: Option<&str>) -> String;
