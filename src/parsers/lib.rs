@@ -50,5 +50,5 @@ impl_error!(serde_yaml::Error);
 impl_error!(toml::de::Error);
 
 trait Solver {
-    fn solve(input: &str, expression: Option<&str>, replace: Option<&str>) -> String;
+    fn solve(input: &str, expression: Option<&str>) -> String;
 }
