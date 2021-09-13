@@ -107,28 +107,32 @@ impl JsonSolver {
     }
 
     fn recursively_parse<'a>(&self, value: serde_json::Value) -> Result<serde_json::Value, TError> {
-        match value {
-            serde_json::Value::Array(v) => {
-                let result = v
-                    .into_iter()
-                    .map(|s| self.recursively_parse(s))
-                    .collect::<Result<Vec<_>, _>>()?;
-                Ok(serde_json::Value::Array(result))
+        if self.recursive {
+            match value {
+                serde_json::Value::Array(v) => {
+                    let result = v
+                        .into_iter()
+                        .map(|s| self.recursively_parse(s))
+                        .collect::<Result<Vec<_>, _>>()?;
+                    Ok(serde_json::Value::Array(result))
+                }
+                serde_json::Value::String(s) => {
+                    Ok(serde_json::from_str(&s).unwrap_or_else(|_| serde_json::Value::String(s)))
+                }
+                serde_json::Value::Object(map) => {
+                    let result = map
+                        .into_iter()
+                        .map(|(key, value)| {
+                            self.recursively_parse(value)
+                                .map(|parsed_value| (key, parsed_value))
+                        })
+                        .collect::<Result<serde_json::Map<_, _>, _>>()?;
+                    Ok(serde_json::Value::Object(result))
+                }
+                v => Ok(v),
             }
-            serde_json::Value::String(s) => {
-                Ok(serde_json::from_str(&s).unwrap_or_else(|_| serde_json::Value::String(s)))
-            }
-            serde_json::Value::Object(map) => {
-                let result = map
-                    .into_iter()
-                    .map(|(key, value)| {
-                        self.recursively_parse(value)
-                            .map(|parsed_value| (key, parsed_value))
-                    })
-                    .collect::<Result<serde_json::Map<_, _>, _>>()?;
-                Ok(serde_json::Value::Object(result))
-            }
-            v => Ok(v),
+        } else {
+            Ok(value)
         }
     }
 
