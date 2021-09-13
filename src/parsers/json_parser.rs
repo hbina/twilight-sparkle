@@ -6,6 +6,7 @@ pub struct JsonSolver {
     pretty: bool,
     recursive: bool,
     json_line: bool,
+    skip_empty: bool,
 }
 
 impl From<&clap::ArgMatches<'_>> for JsonSolver {
@@ -18,11 +19,13 @@ impl From<&clap::ArgMatches<'_>> for JsonSolver {
         let pretty = input.is_present("pretty");
         let recursive = input.is_present("recursive");
         let json_line = input.is_present("json-line");
+        let skip_empty = input.is_present("skip-empty");
         JsonSolver {
             expression,
             pretty,
             recursive,
             json_line,
+            skip_empty,
         }
     }
 }
@@ -36,48 +39,97 @@ impl JsonSolver {
         };
         Ok(lines
             .into_iter()
-            .map(|value| -> Result<String, TError> {
-                let root = serde_json::from_str::<serde_json::Value>(value)?;
-                let resolved_value = {
-                    let mut result = vec![&root];
-                    for expr in &self.expression {
-                        result = result
-                            .into_iter()
-                            .map(
-                                |reader| -> Box<
-                                    dyn Iterator<Item = Result<&serde_json::Value, TError>>,
-                                > {
-                                    match reader {
-                                        serde_json::Value::Array(v) => {
-                                            let next = v.into_iter().map(|o| {
-                                                o.get(expr.as_str()).ok_or_else(|| {
-                                                    TError::KeyNotExist(expr.clone())
-                                                })
-                                            });
-                                            Box::new(next)
-                                        }
-                                        o => {
-                                            let next =
-                                                std::iter::once(o.get(expr.as_str()).ok_or_else(
-                                                    || TError::KeyNotExist(expr.clone()),
-                                                ));
-                                            Box::new(next)
-                                        }
-                                    }
-                                },
-                            )
-                            .flatten()
-                            .collect::<Result<Vec<_>, _>>()?;
-                    }
-                    result
-                };
-                Ok(resolved_value
-                    .iter()
-                    .map(|s| format!("{}\n", JsonSolver::value_to_string(self.pretty, s)))
-                    .collect::<String>())
-            })
+            .map(|value| self.resolve_value_impl(value))
             .collect::<Result<Vec<_>, _>>()?
+            .into_iter()
+            .flatten()
+            .map(|s| format!("{}", JsonSolver::value_to_string(self.pretty, &s)))
+            .collect::<Vec<String>>()
             .join("\n"))
+    }
+
+    fn resolve_value_impl<'a>(&self, value: &'a str) -> Result<Vec<serde_json::Value>, TError> {
+        let root_proto = serde_json::from_str::<serde_json::Value>(value)?;
+        let root = self.recursively_parse(root_proto)?;
+        let resolved_value = {
+            let mut result = vec![root];
+            for expr in &self.expression {
+                result =
+                    result
+                        .into_iter()
+                        .map(
+                            |reader| -> Box<
+                                dyn Iterator<Item = Result<Option<serde_json::Value>, TError>>,
+                            > {
+                                match reader {
+                                    serde_json::Value::Array(v) => {
+                                        let next = v.into_iter().map(|values| {
+                                            let result = values.get(expr.as_str()).cloned();
+                                            if let Some(v) = result {
+                                                Ok(Some(v))
+                                            } else {
+                                                if self.skip_empty {
+                                                    Ok(None)
+                                                } else {
+                                                    Err(TError::KeyNotExist(expr.clone()))
+                                                }
+                                            }
+                                        });
+                                        Box::new(next)
+                                    }
+                                    o => {
+                                        let next = std::iter::once({
+                                            let result = o.get(expr.as_str()).cloned();
+                                            if let Some(v) = result {
+                                                Ok(Some(v))
+                                            } else {
+                                                if self.skip_empty {
+                                                    Ok(None)
+                                                } else {
+                                                    Err(TError::KeyNotExist(expr.clone()))
+                                                }
+                                            }
+                                        });
+                                        Box::new(next)
+                                    }
+                                }
+                            },
+                        )
+                        .flatten()
+                        .collect::<Result<Vec<_>, _>>()?
+                        .into_iter()
+                        .filter_map(|e| e)
+                        .collect::<Vec<_>>();
+            }
+            result
+        };
+        Ok(resolved_value)
+    }
+
+    fn recursively_parse<'a>(&self, value: serde_json::Value) -> Result<serde_json::Value, TError> {
+        match value {
+            serde_json::Value::Array(v) => {
+                let result = v
+                    .into_iter()
+                    .map(|s| self.recursively_parse(s))
+                    .collect::<Result<Vec<_>, _>>()?;
+                Ok(serde_json::Value::Array(result))
+            }
+            serde_json::Value::String(s) => {
+                Ok(serde_json::from_str(&s).unwrap_or_else(|_| serde_json::Value::String(s)))
+            }
+            serde_json::Value::Object(map) => {
+                let result = map
+                    .into_iter()
+                    .map(|(key, value)| {
+                        self.recursively_parse(value)
+                            .map(|parsed_value| (key, parsed_value))
+                    })
+                    .collect::<Result<serde_json::Map<_, _>, _>>()?;
+                Ok(serde_json::Value::Object(result))
+            }
+            v => Ok(v),
+        }
     }
 
     fn value_to_string(pretty: bool, value: &serde_json::Value) -> String {
@@ -117,6 +169,12 @@ pub fn clap_app() -> clap::App<'static, 'static> {
             clap::Arg::with_name("json-line")
                 .long("json-line")
                 .help("Enable JSON-lines mode")
+                .takes_value(false),
+        )
+        .arg(
+            clap::Arg::with_name("skip-empty")
+                .long("skip-empty")
+                .help("If expression fails to resolve, skip the value")
                 .takes_value(false),
         )
         .author(clap::crate_authors!())
