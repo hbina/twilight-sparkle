@@ -23,6 +23,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "autocfg"
+version = "1.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "cdb031dd78e28731d87d56cc8ffef4a8f36ca26c38fe2de700543e627f8a464a"
+
+[[package]]
 name = "bitflags"
 version = "1.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -50,6 +56,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "88d7ed2934d741c6b37e33e3832298e8850b53fd2d2bea03873375596c7cea4e"
 
 [[package]]
+name = "hashbrown"
+version = "0.11.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ab5ef0d4909ef3724cc8cce6ccc8572c5c817592e9285f5464f8e86f8bd3726e"
+
+[[package]]
 name = "hermit-abi"
 version = "0.1.18"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -60,9 +72,19 @@ dependencies = [
 
 [[package]]
 name = "httparse"
-version = "1.4.1"
+version = "1.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f3a87b616e37e93c22fb19bcd386f02f3af5ea98a25670ad0fce773de23c5e68"
+checksum = "acd94fdbe1d4ff688b67b04eee2e17bd50995534a61539e45adfefb45e5e5503"
+
+[[package]]
+name = "indexmap"
+version = "1.7.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bc633605454125dec4b66843673f01c7df2b89479b32e0ed634e43a91cff62a5"
+dependencies = [
+ "autocfg",
+ "hashbrown",
+]
 
 [[package]]
 name = "itoa"
@@ -119,9 +141,9 @@ checksum = "bd761ff957cb2a45fbb9ab3da6512de9de55872866160b23c25f1a841e99d29f"
 
 [[package]]
 name = "serde_json"
-version = "1.0.66"
+version = "1.0.67"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "336b10da19a12ad094b59d870ebde26a45402e5b470add4b5fd03c5048a32127"
+checksum = "a7f9e390c27c3c0ce8bc5d725f6e4d30a29d26659494aa4b17535f7522c5c950"
 dependencies = [
  "itoa",
  "ryu",
@@ -130,12 +152,12 @@ dependencies = [
 
 [[package]]
 name = "serde_yaml"
-version = "0.8.17"
+version = "0.8.21"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "15654ed4ab61726bf918a39cb8d98a2e2995b002387807fa6ba58fdf7f59bb23"
+checksum = "d8c608a35705a5d3cdc9fbe403147647ff34b921f8e833e49306df898f9b20af"
 dependencies = [
  "dtoa",
- "linked-hash-map",
+ "indexmap",
  "serde",
  "yaml-rust",
 ]
