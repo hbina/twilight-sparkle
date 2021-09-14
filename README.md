@@ -12,27 +12,26 @@ twilight-sparkle on  master [?] is 📦 v0.1.0 via 🦀 v1.50.0
 Which one is correct team name in NBA?
 ```
 
-### Todo
-
-For the moment, this is only implemented for JSON and with very basic expression. It should be possible to do this for any kind of input, even HTTP requests, arbitrary HTML data etc etc.
-
 ### Help
 
 ```
-twilight-sparkle 0.1.0
+twilight-sparkle 0.5.1
 Hanif Bin Ariffin <hanif.ariffin.4326@gmail.com>
-
+Perform queries on files
 
 USAGE:
-    twilight-sparkle [OPTIONS] --expression <expression> --type <type>
+    tws [OPTIONS] [SUBCOMMAND]
 
 FLAGS:
     -h, --help       Prints help information
     -V, --version    Prints version information
 
 OPTIONS:
-    -e, --expression <expression>    Expression to evaluate the input with
-    -i, --input <input>              Input file. If not specified, will read from stdin
-    -o, --output <output>            Output file. If not specified, will write to stdout
-    -t, --type <type>                What to interpret the input as
+        --input-file <input-file>
+
+SUBCOMMANDS:
+    help    Prints this message or the help of the given subcommand(s)
+    json    Perform queries on JSON files
+    toml    Perform queries on TOML files
+    yaml    Perform queries on YAML files
 ```
