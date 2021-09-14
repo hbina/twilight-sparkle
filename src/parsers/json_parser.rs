@@ -2,11 +2,11 @@ use crate::TError;
 
 #[derive(Debug)]
 pub struct JsonSolver {
-    expression: Vec<String>,
-    pretty: bool,
-    recursive: bool,
-    json_line: bool,
-    skip_empty: bool,
+    pub expression: Vec<String>,
+    pub pretty: bool,
+    pub recursive: bool,
+    pub json_line: bool,
+    pub skip_empty: bool,
 }
 
 impl From<&clap::ArgMatches<'_>> for JsonSolver {
@@ -18,7 +18,7 @@ impl From<&clap::ArgMatches<'_>> for JsonSolver {
             .unwrap_or_default();
         let pretty = input.is_present("pretty");
         let recursive = input.is_present("recursive");
-        let json_line = input.is_present("json-line");
+        let json_line = input.is_present("json-lines");
         let skip_empty = input.is_present("skip-empty");
         JsonSolver {
             expression,
@@ -31,6 +31,20 @@ impl From<&clap::ArgMatches<'_>> for JsonSolver {
 }
 
 impl JsonSolver {
+    pub fn resolve_value_stream<R>(&self, value: R) -> Result<(), TError>
+    where
+        R: std::io::BufRead,
+    {
+        Ok(value
+            .lines()
+            .map(|value| value.map(|v| self.resolve_value_impl(&v)))
+            .flatten()
+            .flatten()
+            .flatten()
+            .map(|s| format!("{}", JsonSolver::value_to_string(self.pretty, &s)))
+            .for_each(|s| println!("{}", s)))
+    }
+
     pub fn resolve_value<'a>(&self, value: &'a str) -> Result<String, TError> {
         let lines = if self.json_line {
             value.split('\n').filter(|v| !v.is_empty()).collect()
@@ -170,8 +184,8 @@ pub fn clap_app() -> clap::App<'static, 'static> {
                 .takes_value(false),
         )
         .arg(
-            clap::Arg::with_name("json-line")
-                .long("json-line")
+            clap::Arg::with_name("json-lines")
+                .long("json-lines")
                 .help("Enable JSON-lines mode")
                 .takes_value(false),
         )

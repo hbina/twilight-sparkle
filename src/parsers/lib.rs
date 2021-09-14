@@ -21,6 +21,7 @@ impl SupportedFiles {
 
 #[derive(Debug)]
 pub enum TError {
+    NoInput,
     KeyNotExist(String),
     ConversionError(String, Box<dyn std::error::Error>),
     Other(Box<dyn std::error::Error>),
@@ -48,6 +49,7 @@ impl_error!(std::num::ParseIntError);
 impl_error!(serde_json::Error);
 impl_error!(serde_yaml::Error);
 impl_error!(toml::de::Error);
+impl_error!(std::io::Error);
 
 trait Solver {
     fn solve(input: &str, expression: Option<&str>) -> String;
