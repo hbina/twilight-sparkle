@@ -9,24 +9,24 @@ impl From<&clap::ArgMatches<'_>> for YamlSolver {
     fn from(input: &clap::ArgMatches<'_>) -> YamlSolver {
         let expression = input
             .value_of("expression")
-            .map(|s| s.split(".").map(String::from).collect::<_>())
+            .map(|s| s.split('.').map(String::from).collect::<_>())
             .unwrap_or_default();
         YamlSolver { expression }
     }
 }
 
 impl YamlSolver {
-    pub fn resolve_value<'a>(&self, value: &'a str) -> Result<String, TError> {
+    pub fn resolve_value(&self, value: &str) -> Result<String, TError> {
         let root = serde_yaml::from_str::<serde_yaml::Value>(value)?;
         let mut result = vec![&root];
         for expr in &self.expression {
             result = result
                 .into_iter()
                 .map(
-                    |reader| -> Box<dyn Iterator<Item = Result<&serde_yaml::Value, TError>>> {
+                    |reader| -> Box<dyn Iterator<Item=Result<&serde_yaml::Value, TError>>> {
                         match reader {
                             serde_yaml::Value::Sequence(v) => {
-                                let next = v.into_iter().map(|o| {
+                                let next = v.iter().map(|o| {
                                     o.get(expr.as_str())
                                         .ok_or_else(|| TError::KeyNotExist(expr.clone()))
                                 });
