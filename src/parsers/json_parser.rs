@@ -14,7 +14,7 @@ impl From<&clap::ArgMatches<'_>> for JsonSolver {
         let expression = input
             .value_of("expression")
             // TODO: I am pretty sure its perfectly legal to use "." as a value key in JSON?
-            .map(|s| s.split(".").map(String::from).collect::<_>())
+            .map(|s| s.split('.').map(String::from).collect::<_>())
             .unwrap_or_default();
         let pretty = input.is_present("pretty");
         let recursive = input.is_present("recursive");
@@ -32,20 +32,21 @@ impl From<&clap::ArgMatches<'_>> for JsonSolver {
 
 impl JsonSolver {
     pub fn resolve_value_stream<R>(&self, value: R) -> Result<(), TError>
-    where
-        R: std::io::BufRead,
+        where
+            R: std::io::BufRead,
     {
-        Ok(value
+        value
             .lines()
             .map(|value| value.map(|v| self.resolve_value_impl(&v)))
             .flatten()
             .flatten()
             .flatten()
-            .map(|s| format!("{}", JsonSolver::value_to_string(self.pretty, &s)))
-            .for_each(|s| println!("{}", s)))
+            .map(|s| JsonSolver::value_to_string(self.pretty, &s))
+            .for_each(|s| println!("{}", s));
+        Ok(())
     }
 
-    pub fn resolve_value<'a>(&self, value: &'a str) -> Result<String, TError> {
+    pub fn resolve_value(&self, value: &str) -> Result<String, TError> {
         let lines = if self.json_line {
             value.split('\n').filter(|v| !v.is_empty()).collect()
         } else {
@@ -57,12 +58,12 @@ impl JsonSolver {
             .collect::<Result<Vec<_>, _>>()?
             .into_iter()
             .flatten()
-            .map(|s| format!("{}", JsonSolver::value_to_string(self.pretty, &s)))
+            .map(|s| JsonSolver::value_to_string(self.pretty, &s))
             .collect::<Vec<String>>()
             .join("\n"))
     }
 
-    fn resolve_value_impl<'a>(&self, value: &'a str) -> Result<Vec<serde_json::Value>, TError> {
+    fn resolve_value_impl(&self, value: &str) -> Result<Vec<serde_json::Value>, TError> {
         let root_proto = serde_json::from_str::<serde_json::Value>(value)?;
         let root = self.recursively_parse(root_proto)?;
         let resolved_value = {
@@ -73,7 +74,7 @@ impl JsonSolver {
                         .into_iter()
                         .map(
                             |reader| -> Box<
-                                dyn Iterator<Item = Result<Option<serde_json::Value>, TError>>,
+                                dyn Iterator<Item=Result<Option<serde_json::Value>, TError>>,
                             > {
                                 match reader {
                                     serde_json::Value::Array(v) => {
@@ -81,12 +82,10 @@ impl JsonSolver {
                                             let result = values.get(expr.as_str()).cloned();
                                             if let Some(v) = result {
                                                 Ok(Some(v))
+                                            } else if self.skip_empty {
+                                                Ok(None)
                                             } else {
-                                                if self.skip_empty {
-                                                    Ok(None)
-                                                } else {
-                                                    Err(TError::KeyNotExist(expr.clone()))
-                                                }
+                                                Err(TError::KeyNotExist(expr.clone()))
                                             }
                                         });
                                         Box::new(next)
@@ -96,12 +95,10 @@ impl JsonSolver {
                                             let result = o.get(expr.as_str()).cloned();
                                             if let Some(v) = result {
                                                 Ok(Some(v))
+                                            } else if self.skip_empty {
+                                                Ok(None)
                                             } else {
-                                                if self.skip_empty {
-                                                    Ok(None)
-                                                } else {
-                                                    Err(TError::KeyNotExist(expr.clone()))
-                                                }
+                                                Err(TError::KeyNotExist(expr.clone()))
                                             }
                                         });
                                         Box::new(next)
@@ -112,7 +109,7 @@ impl JsonSolver {
                         .flatten()
                         .collect::<Result<Vec<_>, _>>()?
                         .into_iter()
-                        .filter_map(|e| e)
+                        .flatten()
                         .collect::<Vec<_>>();
             }
             result
@@ -120,7 +117,7 @@ impl JsonSolver {
         Ok(resolved_value)
     }
 
-    fn recursively_parse<'a>(&self, value: serde_json::Value) -> Result<serde_json::Value, TError> {
+    fn recursively_parse(&self, value: serde_json::Value) -> Result<serde_json::Value, TError> {
         if self.recursive {
             match value {
                 serde_json::Value::Array(v) => {
@@ -131,7 +128,7 @@ impl JsonSolver {
                     Ok(serde_json::Value::Array(result))
                 }
                 serde_json::Value::String(s) => {
-                    Ok(serde_json::from_str(&s).unwrap_or_else(|_| serde_json::Value::String(s)))
+                    Ok(serde_json::from_str(&s).unwrap_or(serde_json::Value::String(s)))
                 }
                 serde_json::Value::Object(map) => {
                     let result = map

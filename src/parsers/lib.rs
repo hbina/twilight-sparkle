@@ -9,7 +9,7 @@ pub enum SupportedFiles {
 }
 
 impl SupportedFiles {
-    pub fn from_str(input: &str) -> Option<SupportedFiles> {
+    pub fn maybe_from_str(input: &str) -> Option<SupportedFiles> {
         match input {
             "json" => Some(SupportedFiles::JSON),
             "toml" => Some(SupportedFiles::TOML),

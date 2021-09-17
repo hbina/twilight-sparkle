@@ -8,24 +8,24 @@ impl From<&clap::ArgMatches<'_>> for TomlSolver {
     fn from(input: &clap::ArgMatches<'_>) -> TomlSolver {
         let expression = input
             .value_of("expression")
-            .map(|s| s.split(".").map(String::from).collect::<_>())
+            .map(|s| s.split('.').map(String::from).collect::<_>())
             .unwrap_or_default();
         TomlSolver { expression }
     }
 }
 
 impl TomlSolver {
-    pub fn resolve_value<'a>(&self, value: &'a str) -> Result<String, TError> {
+    pub fn resolve_value(&self, value: &str) -> Result<String, TError> {
         let root = toml::from_str::<toml::Value>(value)?;
         let mut result = vec![&root];
         for expr in &self.expression {
             result = result
                 .into_iter()
                 .map(
-                    |reader| -> Box<dyn Iterator<Item = Result<&toml::Value, TError>>> {
+                    |reader| -> Box<dyn Iterator<Item=Result<&toml::Value, TError>>> {
                         match reader {
                             toml::Value::Array(v) => {
-                                let next = v.into_iter().map(|o| {
+                                let next = v.iter().map(|o| {
                                     o.get(expr.as_str())
                                         .ok_or_else(|| TError::KeyNotExist(expr.clone()))
                                 });

@@ -1,5 +1,5 @@
 use parsers::{
-    self, json_parser::JsonSolver, toml_parser::TomlSolver, yaml_parser::YamlSolver, TError,
+    self, json_parser::JsonSolver, TError, toml_parser::TomlSolver, yaml_parser::YamlSolver,
 };
 
 enum InputType {
@@ -53,7 +53,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let (command, args) = matches.subcommand();
     if let Some(matches) = args {
-        match parsers::SupportedFiles::from_str(command) {
+        match parsers::SupportedFiles::maybe_from_str(command) {
             Some(parsers::SupportedFiles::JSON) => {
                 let solver = JsonSolver::from(matches);
                 if solver.json_line {
