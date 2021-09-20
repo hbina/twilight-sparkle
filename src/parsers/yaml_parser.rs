@@ -23,7 +23,7 @@ impl YamlSolver {
             result = result
                 .into_iter()
                 .map(
-                    |reader| -> Box<dyn Iterator<Item=Result<&serde_yaml::Value, TError>>> {
+                    |reader| -> Box<dyn Iterator<Item = Result<&serde_yaml::Value, TError>>> {
                         match reader {
                             serde_yaml::Value::Sequence(v) => {
                                 let next = v.iter().map(|o| {

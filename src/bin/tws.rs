@@ -1,5 +1,5 @@
 use parsers::{
-    self, json_parser::JsonSolver, TError, toml_parser::TomlSolver, yaml_parser::YamlSolver,
+    self, json_parser::JsonSolver, toml_parser::TomlSolver, yaml_parser::YamlSolver, TError,
 };
 
 enum InputType {

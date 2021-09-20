@@ -32,8 +32,8 @@ impl From<&clap::ArgMatches<'_>> for JsonSolver {
 
 impl JsonSolver {
     pub fn resolve_value_stream<R>(&self, value: R) -> Result<(), TError>
-        where
-            R: std::io::BufRead,
+    where
+        R: std::io::BufRead,
     {
         value
             .lines()
@@ -74,7 +74,7 @@ impl JsonSolver {
                         .into_iter()
                         .map(
                             |reader| -> Box<
-                                dyn Iterator<Item=Result<Option<serde_json::Value>, TError>>,
+                                dyn Iterator<Item = Result<Option<serde_json::Value>, TError>>,
                             > {
                                 match reader {
                                     serde_json::Value::Array(v) => {

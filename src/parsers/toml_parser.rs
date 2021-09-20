@@ -22,7 +22,7 @@ impl TomlSolver {
             result = result
                 .into_iter()
                 .map(
-                    |reader| -> Box<dyn Iterator<Item=Result<&toml::Value, TError>>> {
+                    |reader| -> Box<dyn Iterator<Item = Result<&toml::Value, TError>>> {
                         match reader {
                             toml::Value::Array(v) => {
                                 let next = v.iter().map(|o| {
