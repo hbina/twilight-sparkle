@@ -3,17 +3,17 @@ pub mod toml_parser;
 pub mod yaml_parser;
 
 pub enum SupportedFiles {
-    JSON,
-    TOML,
-    YAML,
+    Json,
+    Toml,
+    Yaml,
 }
 
 impl SupportedFiles {
     pub fn maybe_from_str(input: &str) -> Option<SupportedFiles> {
         match input {
-            "json" => Some(SupportedFiles::JSON),
-            "toml" => Some(SupportedFiles::TOML),
-            "yaml" => Some(SupportedFiles::YAML),
+            "json" => Some(SupportedFiles::Json),
+            "toml" => Some(SupportedFiles::Toml),
+            "yaml" => Some(SupportedFiles::Yaml),
             _ => None,
         }
     }

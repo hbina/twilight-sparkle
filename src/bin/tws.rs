@@ -1,3 +1,5 @@
+use std::io::BufRead;
+
 use parsers::{
     self, json_parser::JsonSolver, toml_parser::TomlSolver, yaml_parser::YamlSolver, TError,
 };
@@ -23,6 +25,14 @@ impl InputType {
         };
         Ok(buffer)
     }
+
+    fn read_line(&mut self, buffer: &mut String) -> Result<bool, TError> {
+        let buffer = match self {
+            InputType::Stdin(s) => s.read_line(buffer)? != 0,
+            InputType::BufReader(reader) => reader.read_line(buffer)? != 0,
+        };
+        Ok(buffer)
+    }
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -40,7 +50,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         )
         .get_matches();
 
-    let handle = if atty::is(atty::Stream::Stdin) {
+    let mut handle = if atty::is(atty::Stream::Stdin) {
         if let Some(file) = matches.value_of("input-file") {
             InputType::BufReader(std::io::BufReader::new(std::fs::File::open(file)?))
         } else {
@@ -54,29 +64,38 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let (command, args) = matches.subcommand();
     if let Some(matches) = args {
         match parsers::SupportedFiles::maybe_from_str(command) {
-            Some(parsers::SupportedFiles::JSON) => {
+            Some(parsers::SupportedFiles::Json) => {
                 let solver = JsonSolver::from(matches);
+
                 if solver.json_line {
-                    match handle {
-                        InputType::Stdin(s) => solver.resolve_value_stream(s.lock())?,
-                        InputType::BufReader(buffer) => solver.resolve_value_stream(buffer)?,
-                    };
+                    let mut buffer = String::new();
+                    while handle.read_line(&mut buffer)? {
+                        for x in JsonSolver::from(matches)
+                            .resolve_line(buffer.as_str())
+                            .unwrap()
+                        {
+                            println!("{}", x);
+                        }
+                        buffer.clear();
+                    }
                 } else {
-                    let result = JsonSolver::from(matches)
-                        .resolve_value(&handle.read_everything()?)
-                        .unwrap();
-                    println!("{}", result);
+                    for x in JsonSolver::from(matches)
+                        .resolve_value(handle.read_everything()?.as_ref())
+                        .unwrap()
+                    {
+                        println!("{}", x);
+                    }
                 }
             }
-            Some(parsers::SupportedFiles::TOML) => {
+            Some(parsers::SupportedFiles::Toml) => {
                 let result = TomlSolver::from(matches)
-                    .resolve_value(&handle.read_everything()?)
+                    .resolve_value(handle.read_everything()?.as_ref())
                     .unwrap();
                 println!("{}", result);
             }
-            Some(parsers::SupportedFiles::YAML) => {
+            Some(parsers::SupportedFiles::Yaml) => {
                 let result = YamlSolver::from(matches)
-                    .resolve_value(&handle.read_everything()?)
+                    .resolve_value(handle.read_everything()?.as_ref())
                     .unwrap();
                 println!("{}", result);
             }

@@ -46,21 +46,24 @@ impl JsonSolver {
         Ok(())
     }
 
-    pub fn resolve_value(&self, value: &str) -> Result<String, TError> {
-        let lines = if self.json_line {
-            value.split('\n').filter(|v| !v.is_empty()).collect()
-        } else {
-            vec![value]
-        };
-        Ok(lines
-            .into_iter()
+    pub fn resolve_value(&self, value: &str) -> Result<Vec<String>, TError> {
+        Ok(value
+            .split('\n')
+            .filter(|v| !v.is_empty())
             .map(|value| self.resolve_value_impl(value))
             .collect::<Result<Vec<_>, _>>()?
             .into_iter()
             .flatten()
             .map(|s| JsonSolver::value_to_string(self.pretty, &s))
-            .collect::<Vec<String>>()
-            .join("\n"))
+            .collect::<Vec<String>>())
+    }
+
+    pub fn resolve_line(&self, value: &str) -> Result<Vec<String>, TError> {
+        let result = self.resolve_value_impl(value)?;
+        Ok(result
+            .iter()
+            .map(|v| JsonSolver::value_to_string(self.pretty, v))
+            .collect())
     }
 
     fn resolve_value_impl(&self, value: &str) -> Result<Vec<serde_json::Value>, TError> {
