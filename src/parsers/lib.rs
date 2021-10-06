@@ -1,3 +1,4 @@
+pub mod csv_parser;
 pub mod json_parser;
 pub mod toml_parser;
 pub mod yaml_parser;
@@ -6,6 +7,7 @@ pub enum SupportedFiles {
     Json,
     Toml,
     Yaml,
+    Csv,
 }
 
 impl SupportedFiles {
@@ -14,6 +16,7 @@ impl SupportedFiles {
             "json" => Some(SupportedFiles::Json),
             "toml" => Some(SupportedFiles::Toml),
             "yaml" => Some(SupportedFiles::Yaml),
+            "csv" => Some(SupportedFiles::Csv),
             _ => None,
         }
     }
@@ -50,6 +53,7 @@ impl_error!(serde_json::Error);
 impl_error!(serde_yaml::Error);
 impl_error!(toml::de::Error);
 impl_error!(std::io::Error);
+impl_error!(csv::Error);
 
 trait Solver {
     fn solve(input: &str, expression: Option<&str>) -> String;

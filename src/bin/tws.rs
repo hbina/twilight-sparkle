@@ -1,7 +1,8 @@
 use std::io::BufRead;
 
 use parsers::{
-    self, json_parser::JsonSolver, toml_parser::TomlSolver, yaml_parser::YamlSolver, TError,
+    self, csv_parser::CsvSolver, json_parser::JsonSolver, toml_parser::TomlSolver,
+    yaml_parser::YamlSolver, TError,
 };
 
 enum InputType {
@@ -43,6 +44,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .subcommand(crate::parsers::json_parser::clap_app())
         .subcommand(crate::parsers::toml_parser::clap_app())
         .subcommand(crate::parsers::yaml_parser::clap_app())
+        .subcommand(crate::parsers::csv_parser::clap_app())
         .arg(
             clap::Arg::with_name("input-file")
                 .long("input-file")
@@ -66,7 +68,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         match parsers::SupportedFiles::maybe_from_str(command) {
             Some(parsers::SupportedFiles::Json) => {
                 let solver = JsonSolver::from(matches);
-
                 if solver.json_line {
                     let mut buffer = String::new();
                     while handle.read_line(&mut buffer)? {
@@ -98,6 +99,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     .resolve_value(handle.read_everything()?.as_ref())
                     .unwrap();
                 println!("{}", result);
+            }
+            Some(parsers::SupportedFiles::Csv) => {
+                CsvSolver::from(matches)
+                    .from_reader(handle.read_everything()?.as_ref())
+                    .unwrap();
             }
             None => {
                 // TODO: This should display help instead.

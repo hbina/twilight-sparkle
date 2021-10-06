@@ -1,5 +1,7 @@
-/target
+target/
 dist/
 builds/
 node_modules/
+examples/
+
 .idea/
