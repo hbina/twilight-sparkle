@@ -7,6 +7,7 @@ pub struct JsonSolver {
     pub recursive: bool,
     pub json_line: bool,
     pub skip_empty: bool,
+    pub skip_keys: Vec<String>,
 }
 
 impl From<&clap::ArgMatches<'_>> for JsonSolver {
@@ -20,12 +21,19 @@ impl From<&clap::ArgMatches<'_>> for JsonSolver {
         let recursive = input.is_present("recursive");
         let json_line = input.is_present("json-lines");
         let skip_empty = input.is_present("skip-empty");
+        let skip_keys = input
+            .values_of("skip-key")
+            .unwrap_or_default()
+            .map(|s| s.to_string())
+            .collect();
+        println!("skip_keys:{:?}", skip_keys);
         JsonSolver {
             expression,
             pretty,
             recursive,
             json_line,
             skip_empty,
+            skip_keys,
         }
     }
 }
@@ -67,8 +75,8 @@ impl JsonSolver {
     }
 
     fn resolve_value_impl(&self, value: &str) -> Result<Vec<serde_json::Value>, TError> {
-        let root_proto = serde_json::from_str::<serde_json::Value>(value)?;
-        let root = self.recursively_parse(root_proto)?;
+        let root = serde_json::from_str::<serde_json::Value>(value)
+            .map(|s| self.recursively_parse(s).map(|s| self.remove_keys(s)))??;
         let resolved_value = {
             let mut result = vec![root];
             for expr in &self.expression {
@@ -150,6 +158,19 @@ impl JsonSolver {
         }
     }
 
+    fn remove_keys(&self, value: serde_json::Value) -> serde_json::Value {
+        match value {
+            serde_json::Value::Object(map) => {
+                let result = map
+                    .into_iter()
+                    .filter(|s| !self.skip_keys.contains(&s.0))
+                    .collect::<serde_json::Map<_, _>>();
+                serde_json::Value::Object(result)
+            }
+            v => v,
+        }
+    }
+
     fn value_to_string(pretty: bool, value: &serde_json::Value) -> String {
         if pretty {
             serde_json::to_string_pretty(value).unwrap()
@@ -194,6 +215,16 @@ pub fn clap_app() -> clap::App<'static, 'static> {
                 .long("skip-empty")
                 .help("If expression fails to resolve, skip the value")
                 .takes_value(false),
+        )
+        .arg(
+            clap::Arg::with_name("skip-key")
+                .long("skip-key")
+                .help(
+                    "Keys to be removed from the final output. \
+                    Currently only supports removing root keys.",
+                )
+                .takes_value(true)
+                .multiple(true),
         )
         .author(clap::crate_authors!())
 }

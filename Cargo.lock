@@ -71,12 +71,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "httparse"
-version = "1.5.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "acd94fdbe1d4ff688b67b04eee2e17bd50995534a61539e45adfefb45e5e5503"
-
-[[package]]
 name = "indexmap"
 version = "1.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -188,11 +182,10 @@ dependencies = [
 
 [[package]]
 name = "twilight-sparkle"
-version = "0.7.0"
+version = "0.8.0"
 dependencies = [
  "atty",
  "clap",
- "httparse",
  "nom",
  "serde_json",
  "serde_yaml",
