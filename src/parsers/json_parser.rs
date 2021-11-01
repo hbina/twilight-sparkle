@@ -26,7 +26,6 @@ impl From<&clap::ArgMatches<'_>> for JsonSolver {
             .unwrap_or_default()
             .map(|s| s.to_string())
             .collect();
-        println!("skip_keys:{:?}", skip_keys);
         JsonSolver {
             expression,
             pretty,
