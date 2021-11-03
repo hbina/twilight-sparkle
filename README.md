@@ -1,21 +1,11 @@
 # twilight-sparkle
 
-Parse stdin with expressions of that file type.
-
-### Example
-
-Lets say we want to see the value of questions in this [json file](./examples/test.json). We can simply,
-
-```
-twilight-sparkle on  master [?] is 📦 v0.1.0 via 🦀 v1.50.0
-❯ cat ./examples/test.json | twilight-sparkle -t JSON -e "quiz.sport.q1.question"
-Which one is correct team name in NBA?
-```
+Similar to `jq` but intended for _all_ file formats.
 
 ### Help
 
-```
-twilight-sparkle 0.5.1
+```shell
+twilight-sparkle 0.8.1
 Hanif Bin Ariffin <hanif.ariffin.4326@gmail.com>
 Perform queries on files
 
