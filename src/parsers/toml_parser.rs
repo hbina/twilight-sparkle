@@ -1,5 +1,6 @@
 use crate::TError;
 
+#[derive(Debug)]
 pub struct TomlSolver {
     expression: Vec<String>,
 }

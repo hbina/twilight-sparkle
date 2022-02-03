@@ -4,6 +4,8 @@ use parsers::{
     self, json_parser::JsonSolver, toml_parser::TomlSolver, yaml_parser::YamlSolver, TError,
 };
 
+use log::debug;
+
 enum InputType {
     Stdin(std::io::Stdin),
     BufReader(std::io::BufReader<std::fs::File>),
@@ -36,6 +38,7 @@ impl InputType {
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
+    env_logger::init();
     let matches = clap::App::new(clap::crate_name!())
         .version(clap::crate_version!())
         .author(clap::crate_authors!())
@@ -62,24 +65,28 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     };
 
     let (command, args) = matches.subcommand();
+
+    debug!("command:{}", command);
+    debug!("args:{:#?}", args);
+
     if let Some(matches) = args {
         match parsers::SupportedFiles::maybe_from_str(command) {
             Some(parsers::SupportedFiles::Json) => {
                 let solver = JsonSolver::from(matches);
 
+                debug!("solver:{:#?}", solver);
+
                 if solver.json_line {
                     let mut buffer = String::new();
                     while handle.read_line(&mut buffer)? {
-                        for x in JsonSolver::from(matches)
-                            .resolve_line(buffer.as_str())
-                            .unwrap()
-                        {
+                        debug!("buffer:{}", buffer);
+                        for x in solver.resolve_line(buffer.as_str()).unwrap() {
                             println!("{}", x);
                         }
                         buffer.clear();
                     }
                 } else {
-                    for x in JsonSolver::from(matches)
+                    for x in solver
                         .resolve_value(handle.read_everything()?.as_ref())
                         .unwrap()
                     {
@@ -88,15 +95,25 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 }
             }
             Some(parsers::SupportedFiles::Toml) => {
-                let result = TomlSolver::from(matches)
+                let solver = TomlSolver::from(matches);
+
+                debug!("solver:{:#?}", solver);
+
+                let result = solver
                     .resolve_value(handle.read_everything()?.as_ref())
                     .unwrap();
+
                 println!("{}", result);
             }
             Some(parsers::SupportedFiles::Yaml) => {
-                let result = YamlSolver::from(matches)
+                let solver = YamlSolver::from(matches);
+
+                debug!("solver:{:#?}", solver);
+
+                let result = solver
                     .resolve_value(handle.read_everything()?.as_ref())
                     .unwrap();
+
                 println!("{}", result);
             }
             None => {
