@@ -70,7 +70,10 @@ function App() {
     depthStream: {},
     trades: [],
   });
-  const [intervalMs, setIntervalMs] = createSignal<Readonly<number>>(1000);
+  const [states, setStates] = createSignal<ReadonlyArray<StreamState>>([]);
+  const [stateIdx, setStateIdx] = createSignal<number>(0);
+  const [live, setLive] = createSignal<boolean>(true);
+  const [intervalMs, setIntervalMs] = createSignal<Readonly<number>>(250);
   const [count, setCount] = createSignal<Readonly<number>>(0);
   const [pause, setPause] = createSignal<Readonly<boolean>>(false);
 
@@ -82,8 +85,18 @@ function App() {
       const newMsg: Readonly<StreamState> = await invoke("get_latest_tickers", {
         depth: 10,
       });
-      setState(newMsg);
+      setStates((arr) => [...arr, newMsg]);
       setCount(0);
+    }
+  });
+  createEffect(() => {
+    if (stateIdx() < states().length) {
+      setState(states()[stateIdx()]);
+    }
+  });
+  createEffect(() => {
+    if (live()) {
+      setStateIdx(Math.max(0, states().length - 1));
     }
   });
   onCleanup(() => clearInterval(timer));
@@ -114,6 +127,50 @@ function App() {
         style={{
           display: "flex",
           "flex-direction": "row",
+          "align-items": "center",
+          "column-gap": "5px",
+        }}
+      >
+        <button
+          type="button"
+          onClick={() => {
+            setStateIdx((v) => Math.max(0, v - 1));
+          }}
+        >
+          Previous
+        </button>
+        <input
+          type="range"
+          id="state-idx-slider"
+          name="state-idx-slider"
+          min={0}
+          max={states().length}
+          onChange={(v) => setStateIdx(Number(v.target.value))}
+        />
+        <button
+          type="button"
+          onClick={() => {
+            setStateIdx((v) => Math.min(v + 1, states().length));
+          }}
+        >
+          Next
+        </button>
+        <label>{`Index: ${stateIdx()}`}</label>
+        <div>
+          <input
+            type="checkbox"
+            id="state-live"
+            name="state-live"
+            checked={live()}
+            onClick={() => setLive((b) => !b)}
+          />
+          <label>Live</label>
+        </div>
+      </div>
+      <div
+        style={{
+          display: "flex",
+          "flex-direction": "row",
           "column-gap": "3px",
         }}
       >
@@ -139,7 +196,11 @@ function App() {
             );
           }
         )}
-        <TradeStream count={count()} trades={state().trades} />
+        <TradeStream
+          count={count()}
+          stateIdx={stateIdx()}
+          trades={state().trades}
+        />
       </div>
     </div>
   );
@@ -310,6 +371,7 @@ const DepthStream = (props: DepthStreamProps) => {
 };
 
 type TradeStreamProps = {
+  stateIdx: number;
   count: number;
   trades: ReadonlyArray<PqTriple>;
 };
@@ -325,7 +387,7 @@ const TradeStream = (props: TradeStreamProps) => {
         }}
       >
         <Line
-          datasetIdKey={`trades-${props.count}`}
+          datasetIdKey={`trades-${props.stateIdx}-${props.count}`}
           options={options}
           data={{
             datasets: [
@@ -352,20 +414,6 @@ const fallback = () => {
       <p>Chart is not available</p>
     </div>
   );
-};
-
-const updateF = async (timeoutMs, count, pause, setState, setCount) => {
-  if (!pause()) {
-    const newMsg: Readonly<StreamState> = await invoke("get_latest_tickers", {
-      depth: 10,
-    });
-    setState(newMsg);
-    setCount(count() + 1);
-  }
-
-  setTimeout(() => {
-    updateF(timeoutMs, count, pause, setState, setCount);
-  }, timeoutMs());
 };
 
 export default App;
