@@ -12,13 +12,21 @@ use tungstenite::{connect as websocket_connect, Message};
 
 const F64_MULT: f64 = 1_00_000_000f64;
 
-// Learn more about Tauri commands at https://tauri.app/v1/guides/features/command
 #[tauri::command]
-fn get_latest_tickers(state: tauri::State<Arc<Mutex<BookState>>>, depth: usize) -> BookStateOutput {
+fn get_latest_info(state: tauri::State<Arc<Mutex<BookState>>>, depth: usize) -> BookStateOutput {
     let state_lock = state.lock().unwrap();
     let result = state_lock.clone_to_output(depth);
-    // println!("result:{:#?}", result);
     return result;
+}
+
+#[tauri::command]
+fn get_latest_trade(state: tauri::State<Arc<Mutex<BookState>>>) -> Vec<(u64, f64, f64)> {
+    let mut state_lock = state.lock().unwrap();
+    return state_lock
+        .trades
+        .drain(..)
+        .map(|(a, b, c)| (a, b as f64 / F64_MULT, c as f64 / F64_MULT))
+        .collect();
 }
 
 /// A WebSocket echo server
@@ -221,18 +229,11 @@ impl BookState {
             })
             .collect::<HashMap<_, _>>();
 
-        let trades = self
-            .trades
-            .iter()
-            .map(|(t, p, q)| (*t, *p as f64 / F64_MULT, *q as f64 / F64_MULT))
-            .collect::<Vec<_>>();
-
         BookStateOutput {
             symbol: "btcusdt".to_string(),
             bids: get_bbo(self.bids.iter(), true, depth),
             asks: get_bbo(self.asks.iter(), false, depth),
             depth_stream_state,
-            trades,
         }
     }
 }
@@ -287,7 +288,6 @@ pub struct BookStateOutput {
     asks: Vec<PqData>,
     #[serde(rename = "depthStream")]
     depth_stream_state: HashMap<String, (Vec<PqData>, Vec<PqData>)>,
-    trades: Vec<(u64, f64, f64)>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -440,7 +440,7 @@ fn main() {
     });
     tauri::Builder::default()
         .manage(state)
-        .invoke_handler(tauri::generate_handler![get_latest_tickers])
+        .invoke_handler(tauri::generate_handler![get_latest_info, get_latest_trade])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

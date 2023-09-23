@@ -1,4 +1,4 @@
-import { For, createEffect, createSignal, onCleanup, onMount } from "solid-js";
+import { useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/tauri";
 import {
   Chart as ChartJS,
@@ -11,9 +11,8 @@ import {
   LineElement,
   ChartOptions,
 } from "chart.js";
-import { Line } from "solid-chartjs";
-
 import "./App.css";
+import { Line } from "react-chartjs-2";
 
 export const options: ChartOptions<"line"> = {
   responsive: true,
@@ -48,159 +47,99 @@ type StreamState = {
   depthStream: Readonly<
     Record<string, [ReadonlyArray<PqData>, ReadonlyArray<PqData>]>
   >;
-  trades: ReadonlyArray<PqTriple>;
 };
 
-function App() {
-  onMount(() => {
-    ChartJS.register(
-      CategoryScale,
-      LinearScale,
-      PointElement,
-      LineElement,
-      Title,
-      Tooltip,
-      Legend
-    );
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  Title,
+  Tooltip,
+  Legend
+);
+
+const getLatestInfo = async (): Promise<Readonly<StreamState>> =>
+  invoke("get_latest_info", {
+    depth: 10,
   });
 
-  const [state, setState] = createSignal<Readonly<StreamState>>({
+const getLatestTrade = async (): Promise<ReadonlyArray<PqTriple>> =>
+  invoke("get_latest_trade", {});
+
+function App() {
+  const [state, setState] = useState<Readonly<StreamState>>({
     bids: [],
     asks: [],
     depthStream: {},
-    trades: [],
   });
-  const [states, setStates] = createSignal<ReadonlyArray<StreamState>>([]);
-  const [stateIdx, setStateIdx] = createSignal<number>(0);
-  const [live, setLive] = createSignal<boolean>(true);
-  const [intervalMs, setIntervalMs] = createSignal<Readonly<number>>(250);
-  const [count, setCount] = createSignal<Readonly<number>>(0);
-  const [pause, setPause] = createSignal<Readonly<boolean>>(false);
+  const [trades, setTrades] = useState<ReadonlyArray<PqTriple>>([]);
+  const [intervalMs, setIntervalMs] = useState<Readonly<number>>(50);
+  const [count, setCount] = useState<Readonly<number>>(0);
 
-  const timer = setInterval(async () => {
-    setCount(count() + 1);
-  }, 1);
-  createEffect(async () => {
-    if (!pause() && count() > intervalMs()) {
-      const newMsg: Readonly<StreamState> = await invoke("get_latest_tickers", {
-        depth: 10,
-      });
-      setStates((arr) => [...arr, newMsg]);
-      setCount(0);
-    }
+  useEffect(() => {
+    const interval = setInterval(async () => {
+      setCount(count + 1);
+      if (count >= intervalMs) {
+        setCount(0);
+        getLatestInfo().then((state) => {
+          setState(state);
+        });
+        getLatestTrade().then((trades) => {
+          setTrades((t) => [...t, ...trades]);
+        });
+      }
+    }, 1);
+    return () => clearInterval(interval);
   });
-  createEffect(() => {
-    if (stateIdx() < states().length) {
-      setState(states()[stateIdx()]);
-    }
-  });
-  createEffect(() => {
-    if (live()) {
-      setStateIdx(Math.max(0, states().length - 1));
-    }
-  });
-  onCleanup(() => clearInterval(timer));
 
   return (
     <div>
       <div
         style={{
           display: "flex",
-          "flex-direction": "row",
-          "align-items": "center",
-          "column-gap": "5px",
+          flexDirection: "row",
+          alignItems: "center",
+          columnGap: "5px",
         }}
       >
         <input
           type="number"
-          value={intervalMs()}
+          value={intervalMs}
           onChange={(v) => {
             setIntervalMs(Number(v.target.value));
           }}
         ></input>
-        <button onClick={() => setPause((s) => !s)}>
-          {pause() ? `Unpause` : `Pause`}
-        </button>
-        <div>{`counter: ${count()}`}</div>
+        <div>{`counter: ${count}`}</div>
       </div>
       <div
         style={{
           display: "flex",
-          "flex-direction": "row",
-          "align-items": "center",
-          "column-gap": "5px",
-        }}
-      >
-        <button
-          type="button"
-          onClick={() => {
-            setStateIdx((v) => Math.max(0, v - 1));
-          }}
-        >
-          Previous
-        </button>
-        <input
-          type="range"
-          id="state-idx-slider"
-          name="state-idx-slider"
-          min={0}
-          max={states().length}
-          onChange={(v) => setStateIdx(Number(v.target.value))}
-        />
-        <button
-          type="button"
-          onClick={() => {
-            setStateIdx((v) => Math.min(v + 1, states().length));
-          }}
-        >
-          Next
-        </button>
-        <label>{`Index: ${stateIdx()}`}</label>
-        <div>
-          <input
-            type="checkbox"
-            id="state-live"
-            name="state-live"
-            checked={live()}
-            onClick={() => setLive((b) => !b)}
-          />
-          <label>Live</label>
-        </div>
-      </div>
-      <div
-        style={{
-          display: "flex",
-          "flex-direction": "row",
-          "column-gap": "3px",
+          flexDirection: "row",
+          columnGap: "3px",
         }}
       >
         <div>
           <CombinedDepthStream
-            count={count()}
+            count={count}
             streamName="Combined Stream"
-            bids={state().bids}
-            asks={state().asks}
+            bids={state.bids}
+            asks={state.asks}
           />
         </div>
-        {Object.entries(state().depthStream).map(
-          ([streamName, [bids, asks]]) => {
-            return (
-              <div>
-                <DepthStream
-                  count={count()}
-                  streamName={streamName}
-                  bids={bids}
-                  asks={asks}
-                />
-              </div>
-            );
-          }
-        )}
-        <TradeStream
-          count={count()}
-          stateIdx={stateIdx()}
-          trades={state().trades}
-        />
+        {Object.entries(state.depthStream).map(([streamName, [bids, asks]]) => {
+          return (
+            <div>
+              <DepthStream
+                count={count}
+                streamName={streamName}
+                bids={bids}
+                asks={asks}
+              />
+            </div>
+          );
+        })}
+        <TradeStream count={count} trades={trades} />
       </div>
     </div>
   );
@@ -231,10 +170,10 @@ const DepthStream = (props: DepthStreamProps) => {
       <div
         style={{
           display: "flex",
-          "flex-direction": "column",
+          flexDirection: "column",
           padding: "5px",
           border: "1px solid black",
-          "row-gap": "5px",
+          rowGap: "5px",
         }}
       >
         <div>
@@ -242,30 +181,30 @@ const DepthStream = (props: DepthStreamProps) => {
           <div
             style={{
               display: "flex",
-              "flex-direction": "column",
+              flexDirection: "column",
               padding: "5px",
               border: "1px solid black",
-              "row-gap": "2px",
+              rowGap: "2px",
             }}
           >
-            <For each={props.asks}>
-              {({ p, q, min_seq_id, max_seq_id, min_color, max_color }) => {
+            {props.asks.map(
+              ({ p, q, min_seq_id, max_seq_id, min_color, max_color }) => {
                 return (
                   <div
                     style={{
                       display: "flex",
-                      "flex-direction": "row",
+                      flexDirection: "row",
                       padding: "1px",
                       border: "1px solid black",
-                      "column-gap": "3px",
-                      "justify-content": "space-between",
+                      columnGap: "3px",
+                      justifyContent: "space-between",
                       width: "300px",
                       background: `linear-gradient(to right, pink ${min_color}% ${max_color}%, white ${max_color}%)`,
                     }}
                   >
                     <div
                       style={{
-                        "font-size": "12px",
+                        fontSize: "12px",
                         color: "black",
                       }}
                     >
@@ -273,7 +212,7 @@ const DepthStream = (props: DepthStreamProps) => {
                     </div>
                     <div
                       style={{
-                        "font-size": "12px",
+                        fontSize: "12px",
                         color: "black",
                       }}
                     >
@@ -281,7 +220,7 @@ const DepthStream = (props: DepthStreamProps) => {
                     </div>
                     <div
                       style={{
-                        "font-size": "12px",
+                        fontSize: "12px",
                         color: "black",
                       }}
                     >
@@ -289,7 +228,7 @@ const DepthStream = (props: DepthStreamProps) => {
                     </div>
                     <div
                       style={{
-                        "font-size": "12px",
+                        fontSize: "12px",
                         color: "black",
                       }}
                     >
@@ -297,8 +236,8 @@ const DepthStream = (props: DepthStreamProps) => {
                     </div>
                   </div>
                 );
-              }}
-            </For>
+              }
+            )}
           </div>
         </div>
         <div>
@@ -306,30 +245,30 @@ const DepthStream = (props: DepthStreamProps) => {
           <div
             style={{
               display: "flex",
-              "flex-direction": "column",
+              flexDirection: "column",
               padding: "5px",
               border: "1px solid black",
-              "row-gap": "2px",
+              rowGap: "2px",
             }}
           >
-            <For each={props.bids}>
-              {({ p, q, min_seq_id, max_seq_id, min_color, max_color }) => {
+            {props.bids.map(
+              ({ p, q, min_seq_id, max_seq_id, min_color, max_color }) => {
                 return (
                   <div
                     style={{
                       display: "flex",
-                      "flex-direction": "row",
+                      flexDirection: "row",
                       padding: "1px",
                       border: "1px solid black",
-                      "column-gap": "3px",
-                      "justify-content": "space-between",
+                      columnGap: "3px",
+                      justifyContent: "space-between",
                       width: "300px",
                       background: `linear-gradient(to right, pink ${min_color}% ${max_color}%, white ${max_color}%)`,
                     }}
                   >
                     <div
                       style={{
-                        "font-size": "12px",
+                        fontSize: "12px",
                         color: "black",
                       }}
                     >
@@ -337,7 +276,7 @@ const DepthStream = (props: DepthStreamProps) => {
                     </div>
                     <div
                       style={{
-                        "font-size": "12px",
+                        fontSize: "12px",
                         color: "black",
                       }}
                     >
@@ -345,7 +284,7 @@ const DepthStream = (props: DepthStreamProps) => {
                     </div>
                     <div
                       style={{
-                        "font-size": "12px",
+                        fontSize: "12px",
                         color: "black",
                       }}
                     >
@@ -353,7 +292,7 @@ const DepthStream = (props: DepthStreamProps) => {
                     </div>
                     <div
                       style={{
-                        "font-size": "12px",
+                        fontSize: "12px",
                         color: "black",
                       }}
                     >
@@ -361,8 +300,8 @@ const DepthStream = (props: DepthStreamProps) => {
                     </div>
                   </div>
                 );
-              }}
-            </For>
+              }
+            )}
           </div>
         </div>
       </div>
@@ -371,7 +310,6 @@ const DepthStream = (props: DepthStreamProps) => {
 };
 
 type TradeStreamProps = {
-  stateIdx: number;
   count: number;
   trades: ReadonlyArray<PqTriple>;
 };
@@ -387,7 +325,7 @@ const TradeStream = (props: TradeStreamProps) => {
         }}
       >
         <Line
-          datasetIdKey={`trades-${props.stateIdx}-${props.count}`}
+          datasetIdKey={`trades-${props.count}`}
           options={options}
           data={{
             datasets: [
@@ -401,17 +339,8 @@ const TradeStream = (props: TradeStreamProps) => {
               },
             ],
           }}
-          fallback={fallback}
         />
       </div>
-    </div>
-  );
-};
-
-const fallback = () => {
-  return (
-    <div>
-      <p>Chart is not available</p>
     </div>
   );
 };
